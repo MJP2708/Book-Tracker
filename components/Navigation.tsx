@@ -33,6 +33,13 @@ export function Navigation() {
                   Dashboard
                 </Link>
                 <Link
+                  href="/library"
+                  className="flex items-center gap-2 text-slate-700 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
+                >
+                  <BookOpen className="w-5 h-5" />
+                  Library
+                </Link>
+                <Link
                   href="/feed"
                   className="flex items-center gap-2 text-slate-700 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
                 >
@@ -85,6 +92,12 @@ export function Navigation() {
                   className="block px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
                 >
                   Dashboard
+                </Link>
+                <Link
+                  href="/library"
+                  className="block px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
+                >
+                  Library
                 </Link>
                 <Link
                   href="/feed"
