@@ -1,6 +1,6 @@
 "use client";
 
-import { Heart, MessageCircle2, Bookmark, Share2, User } from "lucide-react";
+import { Heart, MessageCircle, Bookmark, Share2, User } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -49,11 +49,11 @@ export function PostCard({
   const getTypeLabel = () => {
     switch (type) {
       case "repost":
-        return "🔄 Reposted";
+        return "Reposted";
       case "quote":
-        return "💬 Shared a quote";
+        return "Shared a quote";
       default:
-        return "📝 Posted";
+        return "Posted";
     }
   };
 
@@ -79,7 +79,7 @@ export function PostCard({
             </h3>
           </Link>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            {getTypeLabel()} • {createdAt.toLocaleDateString()}
+            {getTypeLabel()} - {createdAt.toLocaleDateString()}
           </p>
         </div>
       </div>
@@ -128,7 +128,7 @@ export function PostCard({
           <span className="text-sm font-medium">{likeCount}</span>
         </button>
         <button className="flex items-center gap-2 hover:text-blue-500 transition-colors">
-          <MessageCircle2 className="w-5 h-5" />
+          <MessageCircle className="w-5 h-5" />
           <span className="text-sm font-medium">{comments}</span>
         </button>
         <button className="flex items-center gap-2 hover:text-amber-600 dark:hover:text-amber-400 transition-colors ml-auto">

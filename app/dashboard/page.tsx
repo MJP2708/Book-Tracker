@@ -33,7 +33,7 @@ export default function DashboardPage() {
           {/* Header */}
           <div className="mb-8">
             <h1 className="font-serif-title text-amber-900 dark:text-amber-50 mb-2">
-              Welcome Back! 📚
+              Welcome Back!
             </h1>
             <p className="text-slate-600 dark:text-slate-400">
               Track your reading, connect with other book lovers, and discover
@@ -74,7 +74,9 @@ export default function DashboardPage() {
                     name: "James Chen",
                   }}
                   type="quote"
-                  content=""Between the pages of a book is a perfect place to be." - Unknown'
+                  content={
+                    '"Between the pages of a book is a perfect place to be." - Unknown'
+                  }
                   createdAt={new Date()}
                   likes={89}
                   comments={5}
@@ -87,7 +89,7 @@ export default function DashboardPage() {
               {/* Reading Goals */}
               <div className="card-bookish mb-6">
                 <h3 className="font-serif-subtitle text-slate-900 dark:text-amber-50 mb-4">
-                  📖 Currently Reading
+                  Currently Reading
                 </h3>
                 <div className="space-y-4">
                   {recentBooks.length > 0 ? (
@@ -134,7 +136,7 @@ export default function DashboardPage() {
               {/* Statistics */}
               <div className="card-bookish">
                 <h3 className="font-serif-subtitle text-slate-900 dark:text-amber-50 mb-4">
-                  📊 Your Stats
+                  Your Stats
                 </h3>
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">

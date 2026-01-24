@@ -21,7 +21,7 @@ model User {
   updatedAt     DateTime   @updatedAt
 
   // Relations
-  books         Book[]
+  userBooks     UserBook[]
   wishlist      WishlistItem[]
   posts         Post[]
   likes         Like[]
@@ -29,7 +29,9 @@ model User {
   saves         Save[]
   followers     Follows[] @relation("follower")
   following     Follows[] @relation("following")
-  tags          TagMention[]
+  mentionsReceived TagMention[] @relation("mentioned_user")
+  mentionsMade    TagMention[] @relation("mentioning_user")
+  quotes        Quote[]
   readingStats  ReadingStats?
 
   @@index([email])
@@ -55,7 +57,6 @@ model Book {
   posts         Post[]
   quotes        Quote[]
 
-  @@fulltext([title, author])
 }
 
 model UserBook {
@@ -181,8 +182,8 @@ model TagMention {
   postId        String?
   createdAt     DateTime   @default(now())
 
-  mentionedUser User       @relation(fields: [mentionedUserId], references: [id], onDelete: Cascade)
-  user          User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  mentionedUser User       @relation("mentioned_user", fields: [mentionedUserId], references: [id], onDelete: Cascade)
+  user          User?      @relation("mentioning_user", fields: [userId], references: [id], onDelete: SetNull)
   post          Post?      @relation(fields: [postId], references: [id], onDelete: SetNull)
 }
 

@@ -48,7 +48,9 @@ export default function FeedPage() {
                 name: "James Chen",
               }}
               type="quote"
-              content=""The only thing we never get enough of is love; and the only thing we never give enough of is love."  - Henry Miller"
+              content={
+                '"The only thing we never get enough of is love; and the only thing we never give enough of is love." - Henry Miller'
+              }
               createdAt={new Date()}
               likes={234}
               comments={8}
@@ -60,7 +62,7 @@ export default function FeedPage() {
                 name: "Emma Wilson",
               }}
               type="post"
-              content="Finally finished my reading goal for this month! 📚 Already started the next one. What should I read next?"
+              content="Finally finished my reading goal for this month! Already started the next one. What should I read next?"
               createdAt={new Date()}
               likes={145}
               comments={31}
