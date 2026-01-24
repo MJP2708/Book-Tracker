@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { userId: string } }
+  context: { params: Promise<{ userId: string }> }
 ) {
   try {
     const session = await auth();
@@ -20,7 +20,7 @@ export async function POST(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const userIdToFollow = params.userId;
+    const { userId: userIdToFollow } = await context.params;
 
     // Check if already following
     const existing = await prisma.follows.findUnique({

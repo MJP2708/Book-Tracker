@@ -16,7 +16,7 @@ export async function getCurrentUser() {
       readingStats: true,
       _count: {
         select: {
-          books: true,
+          userBooks: true,
           followers: true,
           following: true,
         },

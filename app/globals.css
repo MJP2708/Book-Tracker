@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
 @theme {
+  --font-playfair: var(--font-playfair);
+  --font-inter: var(--font-inter);
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
   --color-card: hsl(var(--card));
@@ -58,29 +60,30 @@
     --ring: 36 100% 50%;
   }
 
+  html {
+    @apply scroll-smooth;
+  }
+
   body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
+    @apply antialiased;
   }
 }
 
-/* Book-themed styling */
 @layer components {
-  /* Book cover shadows */
   .book-shadow {
     @apply shadow-lg hover:shadow-2xl transition-shadow duration-300;
   }
 
-  /* Book cover perspective */
   .book-cover {
-    @apply relative overflow-hidden rounded-lg book-shadow;
+    @apply relative overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition-shadow duration-300;
     background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
   }
 
-  /* Paper texture */
   .paper-texture {
     @apply relative;
-    background-image: 
+    background-image:
       repeating-linear-gradient(
         90deg,
         transparent,
@@ -97,7 +100,6 @@
       );
   }
 
-  /* Warm gradients */
   .gradient-warm {
     @apply bg-gradient-to-br from-amber-100 via-orange-50 to-rose-100;
   }
@@ -106,7 +108,6 @@
     @apply dark:bg-gradient-to-br dark:from-slate-800 dark:via-slate-900 dark:to-slate-800;
   }
 
-  /* Typography - Serif for titles */
   .font-serif-title {
     @apply font-playfair text-2xl font-bold tracking-tight;
   }
@@ -115,7 +116,6 @@
     @apply font-playfair text-lg font-semibold;
   }
 
-  /* Animations */
   @keyframes slideIn {
     from {
       opacity: 0;
@@ -179,12 +179,25 @@
     animation: float 3s ease-in-out infinite;
   }
 
-  /* Card styling */
   .card-bookish {
-    @apply rounded-xl bg-white p-6 paper-texture shadow-md hover:shadow-lg transition-all duration-300 dark:bg-slate-800 dark:border dark:border-slate-700;
+    @apply relative rounded-xl bg-white p-6 shadow-md hover:shadow-lg transition-all duration-300 dark:bg-slate-800 dark:border dark:border-slate-700;
+    background-image:
+      repeating-linear-gradient(
+        90deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 0, 0, 0.03) 2px,
+        rgba(0, 0, 0, 0.03) 4px
+      ),
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 0, 0, 0.03) 2px,
+        rgba(0, 0, 0, 0.03) 4px
+      );
   }
 
-  /* Button styling */
   .btn-primary {
     @apply inline-flex items-center justify-center rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-3 font-medium text-white shadow-md hover:shadow-lg hover:from-amber-600 hover:to-orange-600 transition-all duration-300 font-inter;
   }
@@ -193,22 +206,19 @@
     @apply inline-flex items-center justify-center rounded-lg border-2 border-amber-500 px-6 py-3 font-medium text-amber-700 hover:bg-amber-50 transition-all duration-300 font-inter dark:text-amber-300 dark:hover:bg-slate-800;
   }
 
-  /* Badge styling */
   .badge {
     @apply inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-sm font-medium text-amber-900 dark:bg-amber-900 dark:text-amber-100;
   }
 
-  /* Micro-interactions */
   .hover-lift {
     @apply transition-transform duration-300 hover:-translate-y-1;
   }
 
   .hover-glow {
-    @apply transition-all duration-300 hover:shadow-glow;
+    @apply transition-all duration-300 hover:shadow-lg;
   }
 }
 
-/* Scrollbar styling */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
