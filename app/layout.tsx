@@ -1,20 +1,26 @@
+import { Playfair_Display, Inter } from "next/font/google";
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { Providers } from "@/lib/providers";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const playfair = Playfair_Display({
   subsets: ["latin"],
+  variable: "--font-playfair",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const inter = Inter({
   subsets: ["latin"],
+  variable: "--font-inter",
 });
 
 export const metadata: Metadata = {
-  title: "Book Tracker - Your Reading Library",
-  description: "Track and organize your reading journey with an intuitive book tracker",
+  title: "Bookshelf - Your Social Reading Platform",
+  description: "Connect with readers, share books, track progress, and discover your next favorite read.",
+  icons: {
+    icon: [
+      { url: "/icon.png", sizes: "any" },
+    ],
+  },
 };
 
 export default function RootLayout({
@@ -23,11 +29,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${playfair.variable} ${inter.variable} bg-amber-50 text-slate-900 antialiased transition-colors duration-300 dark:bg-slate-900 dark:text-amber-50`}
       >
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

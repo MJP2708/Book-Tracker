@@ -1,0 +1,220 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String     @id @default(cuid())
+  email         String     @unique
+  password      String?    // Hashed password (optional for OAuth)
+  name          String?
+  bio           String?    @db.Text
+  avatar        String?    // URL to avatar
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  // Relations
+  books         Book[]
+  wishlist      WishlistItem[]
+  posts         Post[]
+  likes         Like[]
+  comments      Comment[]
+  saves         Save[]
+  followers     Follows[] @relation("follower")
+  following     Follows[] @relation("following")
+  tags          TagMention[]
+  readingStats  ReadingStats?
+
+  @@index([email])
+}
+
+model Book {
+  id            String     @id @default(cuid())
+  title         String
+  author        String?
+  isbn          String?    @unique
+  coverImage    String?    // URL to cover
+  description   String?    @db.Text
+  totalPages    Int?
+  genre         String?
+  publishedYear Int?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  // User's library entries
+  userBooks     UserBook[]
+  
+  // Social content
+  posts         Post[]
+  quotes        Quote[]
+
+  @@fulltext([title, author])
+}
+
+model UserBook {
+  id            String     @id @default(cuid())
+  userId        String
+  bookId        String
+  status        String     @default("unread") // unread, reading, finished
+  rating        Int?       // 1-5
+  review        String?    @db.Text
+  pagesRead     Int?
+  notes         String?    @db.Text
+  startedAt     DateTime?
+  finishedAt    DateTime?
+  tags          String[]   // Custom tags
+  isPinned      Boolean    @default(false)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  book          Book       @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, bookId])
+  @@index([userId, status])
+}
+
+model WishlistItem {
+  id            String     @id @default(cuid())
+  userId        String
+  bookTitle     String
+  author        String?
+  coverImage    String?
+  notes         String?    @db.Text
+  createdAt     DateTime   @default(now())
+
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Post {
+  id            String     @id @default(cuid())
+  userId        String
+  bookId        String?    // Reference to book (for repost/share)
+  content       String?    @db.Text // Caption or status
+  type          String     @default("post") // post, repost, progress_update
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  book          Book?      @relation(fields: [bookId], references: [id], onDelete: SetNull)
+  
+  likes         Like[]
+  comments      Comment[]
+  saves         Save[]
+  tags          TagMention[]
+  quotes        Quote[]
+
+  @@index([userId, createdAt])
+  @@index([bookId])
+}
+
+model Quote {
+  id            String     @id @default(cuid())
+  userId        String
+  bookId        String
+  postId        String?    // If shared as a post
+  content       String     @db.Text
+  pageNumber    Int?
+  createdAt     DateTime   @default(now())
+
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  book          Book       @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  post          Post?      @relation(fields: [postId], references: [id], onDelete: SetNull)
+
+  @@index([userId, bookId])
+  @@index([postId])
+}
+
+model Like {
+  id            String     @id @default(cuid())
+  userId        String
+  postId        String
+  createdAt     DateTime   @default(now())
+
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post          Post       @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+  @@index([postId])
+}
+
+model Comment {
+  id            String     @id @default(cuid())
+  userId        String
+  postId        String
+  content       String     @db.Text
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post          Post       @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId, createdAt])
+  @@index([userId])
+}
+
+model Save {
+  id            String     @id @default(cuid())
+  userId        String
+  postId        String
+  createdAt     DateTime   @default(now())
+
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post          Post       @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+}
+
+model TagMention {
+  id            String     @id @default(cuid())
+  mentionedUserId String
+  userId        String? // Who mentioned them
+  postId        String?
+  createdAt     DateTime   @default(now())
+
+  mentionedUser User       @relation(fields: [mentionedUserId], references: [id], onDelete: Cascade)
+  user          User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  post          Post?      @relation(fields: [postId], references: [id], onDelete: SetNull)
+}
+
+model Hashtag {
+  id            String     @id @default(cuid())
+  name          String     @unique
+  postCount     Int        @default(1)
+  createdAt     DateTime   @default(now())
+}
+
+model Follows {
+  id            String     @id @default(cuid())
+  follower      User       @relation("follower", fields: [followerId], references: [id], onDelete: Cascade)
+  followerId    String
+  following     User       @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
+  followingId   String
+  createdAt     DateTime   @default(now())
+
+  @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+}
+
+model ReadingStats {
+  id            String     @id @default(cuid())
+  userId        String     @unique
+  booksRead     Int        @default(0)
+  totalPages    Int        @default(0)
+  readingStreak Int        @default(0)
+  lastReadDate  DateTime?
+  favoriteGenre String?
+  updatedAt     DateTime   @updatedAt
+
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
