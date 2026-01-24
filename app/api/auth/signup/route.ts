@@ -1,3 +1,5 @@
+export const runtime = "nodejs";
+
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { NextRequest, NextResponse } from "next/server";
@@ -49,9 +51,16 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Failed to create account";
     console.error("Signup error:", error);
     return NextResponse.json(
-      { error: "Failed to create account" },
+      {
+        error:
+          process.env.NODE_ENV === "production"
+            ? "Failed to create account"
+            : message,
+      },
       { status: 500 }
     );
   }

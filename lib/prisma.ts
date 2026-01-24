@@ -1,5 +1,13 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaNeon } from "@prisma/adapter-neon";
+import { neonConfig } from "@neondatabase/serverless";
+
+// Provide WebSocket impl for Neon in Node.js runtime (uses Next bundled ws)
+if (!neonConfig.webSocketConstructor) {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const ws = require("next/dist/compiled/ws");
+  neonConfig.webSocketConstructor = ws;
+}
 
 const globalForPrisma = global as unknown as {
   prisma: PrismaClient | undefined;
