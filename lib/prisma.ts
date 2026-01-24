@@ -1,19 +1,14 @@
-import { PrismaClient } from "@prisma/client/edge";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { Pool } from "pg";
+import { PrismaClient } from "@prisma/client";
+import { PrismaNeon } from "@prisma/adapter-neon";
+import { neon } from "@neondatabase/serverless";
 
 const globalForPrisma = global as unknown as {
   prisma: PrismaClient | undefined;
-  pgPool: Pool | undefined;
+  neonSql: ReturnType<typeof neon> | undefined;
 };
 
-const pool =
-  globalForPrisma.pgPool ||
-  new Pool({
-    connectionString: process.env.DATABASE_URL,
-  });
-
-const adapter = new PrismaPg(pool);
+const sql = globalForPrisma.neonSql || neon(process.env.DATABASE_URL ?? "");
+const adapter = new PrismaNeon(sql);
 
 export const prisma =
   globalForPrisma.prisma ||
@@ -24,5 +19,5 @@ export const prisma =
 
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
-  globalForPrisma.pgPool = pool;
+  globalForPrisma.neonSql = sql;
 }
