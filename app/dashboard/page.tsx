@@ -3,9 +3,11 @@
 import { Navigation } from "@/components/Navigation";
 import { CreatePostForm } from "@/components/feed/CreatePostForm";
 import { PostCard } from "@/components/feed/PostCard";
-import { BookX } from "lucide-react";
+import { BookX, UserPlus, Users } from "lucide-react";
+import { useState } from "react";
 
 export default function DashboardPage() {
+  const [addedFriends, setAddedFriends] = useState<Record<string, boolean>>({});
   // This will be replaced with real data from the server
   const recentBooks = [
     {
@@ -23,6 +25,11 @@ export default function DashboardPage() {
       status: "finished" as const,
       rating: 5,
     },
+  ];
+  const suggestedFriends = [
+    { name: "Avery M.", tag: "Historical fiction" },
+    { name: "Jules K.", tag: "Fantasy & YA" },
+    { name: "Priya R.", tag: "Nonfiction streak" },
   ];
 
   return (
@@ -86,6 +93,57 @@ export default function DashboardPage() {
 
             {/* Sidebar */}
             <div className="lg:col-span-1">
+              {/* Add Friends */}
+              <div className="card-bookish mb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-serif-subtitle text-slate-900 dark:text-amber-50">
+                    Add Friends
+                  </h3>
+                  <span className="badge">New</span>
+                </div>
+                <div className="flex items-center gap-2 mb-4">
+                  <Users className="w-5 h-5 text-amber-600 dark:text-amber-300" />
+                  <p className="text-sm text-slate-600 dark:text-slate-400">
+                    Grow your circle and share shelves.
+                  </p>
+                </div>
+                <div className="space-y-3">
+                  {suggestedFriends.map((friend) => (
+                    <div
+                      key={friend.name}
+                      className="flex items-center justify-between gap-3 rounded-lg border border-amber-100 dark:border-slate-700 p-3"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-medium text-slate-900 dark:text-amber-50 truncate">
+                          {friend.name}
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          {friend.tag}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        className={`btn-secondary px-3 py-2 text-sm gap-1 ${
+                          addedFriends[friend.name]
+                            ? "cursor-default opacity-80"
+                            : ""
+                        }`}
+                        onClick={() =>
+                          setAddedFriends((prev) => ({
+                            ...prev,
+                            [friend.name]: true,
+                          }))
+                        }
+                        disabled={addedFriends[friend.name]}
+                      >
+                        <UserPlus className="w-4 h-4" />
+                        {addedFriends[friend.name] ? "Sent" : "Add"}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               {/* Reading Goals */}
               <div className="card-bookish mb-6">
                 <h3 className="font-serif-subtitle text-slate-900 dark:text-amber-50 mb-4">
