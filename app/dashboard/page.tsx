@@ -4,33 +4,148 @@ import { Navigation } from "@/components/Navigation";
 import { CreatePostForm } from "@/components/feed/CreatePostForm";
 import { PostCard } from "@/components/feed/PostCard";
 import { BookX, UserPlus, Users } from "lucide-react";
-import { useState } from "react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+
+type FeedPost = {
+  id: string;
+  type: "post" | "repost" | "quote" | "progress_update";
+  content?: string | null;
+  createdAt: string;
+  user: { id: string; name: string | null; avatar?: string | null };
+  book?: { title: string; author: string | null; coverImage?: string | null } | null;
+  _count: { likes: number; comments: number };
+};
+
+type UserBook = {
+  id: string;
+  status: string;
+  rating?: number | null;
+  pagesRead?: number | null;
+  totalPages?: number | null;
+  book: {
+    title: string;
+    author?: string | null;
+  };
+};
+
+type SuggestionsUser = {
+  id: string;
+  name: string | null;
+  favoriteGenre?: string | null;
+};
 
 export default function DashboardPage() {
   const [addedFriends, setAddedFriends] = useState<Record<string, boolean>>({});
-  // This will be replaced with real data from the server
-  const recentBooks = [
-    {
-      id: "1",
-      title: "The Midnight Library",
-      author: "Matt Haig",
-      status: "reading" as const,
-      pagesRead: 245,
-      totalPages: 288,
-    },
-    {
-      id: "2",
-      title: "Atomic Habits",
-      author: "James Clear",
-      status: "finished" as const,
-      rating: 5,
-    },
-  ];
-  const suggestedFriends = [
-    { name: "Avery M.", tag: "Historical fiction" },
-    { name: "Jules K.", tag: "Fantasy & YA" },
-    { name: "Priya R.", tag: "Nonfiction streak" },
-  ];
+  const { status } = useSession();
+  const router = useRouter();
+  const [posts, setPosts] = useState<FeedPost[]>([]);
+  const [recentBooks, setRecentBooks] = useState<UserBook[]>([]);
+  const [suggestedFriends, setSuggestedFriends] = useState<SuggestionsUser[]>(
+    []
+  );
+  const [stats, setStats] = useState({
+    booksRead: 0,
+    totalPages: 0,
+    readingStreak: 0,
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const currentlyReading = recentBooks.filter(
+    (book) => book.status === "reading"
+  );
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/auth/login");
+      return;
+    }
+    if (status === "authenticated") {
+      void loadDashboard();
+    }
+  }, [status, router]);
+
+  const loadDashboard = async () => {
+    setIsLoading(true);
+    try {
+      const [postsRes, booksRes, meRes, suggestionsRes] = await Promise.all([
+        fetch("/api/posts?limit=3"),
+        fetch("/api/library"),
+        fetch("/api/me"),
+        fetch("/api/users/suggestions"),
+      ]);
+
+      if (postsRes.ok) {
+        const postData = (await postsRes.json()) as FeedPost[];
+        setPosts(postData);
+      }
+
+      if (booksRes.ok) {
+        const bookData = (await booksRes.json()) as UserBook[];
+        setRecentBooks(bookData);
+      }
+
+      if (meRes.ok) {
+        const meData = (await meRes.json()) as {
+          stats: { booksRead: number; totalPages: number; readingStreak: number };
+        };
+        setStats(meData.stats);
+      }
+
+      if (suggestionsRes.ok) {
+        const suggestionData = (await suggestionsRes.json()) as SuggestionsUser[];
+        setSuggestedFriends(suggestionData);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCreatePost = async (data: { type: string; content: string }) => {
+    const payload = {
+      type: data.type === "progress" ? "progress_update" : data.type,
+      content: data.content,
+    };
+    const response = await fetch("/api/posts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      throw new Error("Failed to create post.");
+    }
+    const created = (await response.json()) as FeedPost;
+    setPosts((prev) => [created, ...prev].slice(0, 3));
+  };
+
+  const handleToggleLike = async (postId: string) => {
+    const response = await fetch(`/api/posts/${postId}/like`, { method: "POST" });
+    if (!response.ok) {
+      return;
+    }
+    const data = (await response.json()) as { likeCount: number };
+    setPosts((prev) =>
+      prev.map((post) =>
+        post.id === postId
+          ? { ...post, _count: { ...post._count, likes: data.likeCount } }
+          : post
+      )
+    );
+  };
+
+  const handleFollow = async (userId: string) => {
+    const response = await fetch(`/api/users/${userId}/follow`, {
+      method: "POST",
+    });
+    if (!response.ok) {
+      return;
+    }
+    setAddedFriends((prev) => ({ ...prev, [userId]: true }));
+  };
+
+  if (status === "loading") {
+    return null;
+  }
 
   return (
     <>
@@ -52,42 +167,45 @@ export default function DashboardPage() {
             {/* Main Content */}
             <div className="lg:col-span-2 space-y-6">
               {/* Create Post */}
-              <CreatePostForm />
+              <CreatePostForm onPost={handleCreatePost} />
 
               {/* Sample Posts */}
               <div className="space-y-4">
-                <PostCard
-                  id="1"
-                  author={{
-                    id: "user1",
-                    name: "Sarah Anderson",
-                    avatar:
-                      "https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah",
-                  }}
-                  type="repost"
-                  book={{
-                    title: "The Midnight Library",
-                    author: "Matt Haig",
-                  }}
-                  content="Just finished this beautiful book about second chances. A must-read!"
-                  createdAt={new Date()}
-                  likes={234}
-                  comments={12}
-                />
-                <PostCard
-                  id="2"
-                  author={{
-                    id: "user2",
-                    name: "James Chen",
-                  }}
-                  type="quote"
-                  content={
-                    '"Between the pages of a book is a perfect place to be." - Unknown'
-                  }
-                  createdAt={new Date()}
-                  likes={89}
-                  comments={5}
-                />
+                {isLoading ? (
+                  <div className="card-bookish">Loading your updates...</div>
+                ) : posts.length === 0 ? (
+                  <div className="card-bookish">
+                    No posts yet. Share your first update to start the
+                    conversation.
+                  </div>
+                ) : (
+                  posts.map((post) => (
+                    <PostCard
+                      key={post.id}
+                      id={post.id}
+                      author={{
+                        id: post.user.id,
+                        name: post.user.name ?? "Reader",
+                        avatar: post.user.avatar ?? undefined,
+                      }}
+                      type={post.type}
+                      book={
+                        post.book
+                          ? {
+                              title: post.book.title,
+                              author: post.book.author ?? "Unknown",
+                              coverImage: post.book.coverImage ?? undefined,
+                            }
+                          : undefined
+                      }
+                      content={post.content ?? undefined}
+                      createdAt={post.createdAt}
+                      likes={post._count.likes}
+                      comments={post._count.comments}
+                      onLike={() => handleToggleLike(post.id)}
+                    />
+                  ))
+                )}
               </div>
             </div>
 
@@ -108,39 +226,40 @@ export default function DashboardPage() {
                   </p>
                 </div>
                 <div className="space-y-3">
-                  {suggestedFriends.map((friend) => (
-                    <div
-                      key={friend.name}
-                      className="flex items-center justify-between gap-3 rounded-lg border border-amber-100 dark:border-slate-700 p-3"
-                    >
-                      <div className="min-w-0">
-                        <p className="font-medium text-slate-900 dark:text-amber-50 truncate">
-                          {friend.name}
-                        </p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                          {friend.tag}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        className={`btn-secondary px-3 py-2 text-sm gap-1 ${
-                          addedFriends[friend.name]
-                            ? "cursor-default opacity-80"
-                            : ""
-                        }`}
-                        onClick={() =>
-                          setAddedFriends((prev) => ({
-                            ...prev,
-                            [friend.name]: true,
-                          }))
-                        }
-                        disabled={addedFriends[friend.name]}
+                  {suggestedFriends.length === 0 ? (
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                      No suggestions yet. Invite friends to join you.
+                    </p>
+                  ) : (
+                    suggestedFriends.map((friend) => (
+                      <div
+                        key={friend.id}
+                        className="flex items-center justify-between gap-3 rounded-lg border border-amber-100 dark:border-slate-700 p-3"
                       >
-                        <UserPlus className="w-4 h-4" />
-                        {addedFriends[friend.name] ? "Sent" : "Add"}
-                      </button>
-                    </div>
-                  ))}
+                        <div className="min-w-0">
+                          <p className="font-medium text-slate-900 dark:text-amber-50 truncate">
+                            {friend.name ?? "Reader"}
+                          </p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            {friend.favoriteGenre ?? "Book lover"}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          className={`btn-secondary px-3 py-2 text-sm gap-1 ${
+                            addedFriends[friend.id]
+                              ? "cursor-default opacity-80"
+                              : ""
+                          }`}
+                          onClick={() => handleFollow(friend.id)}
+                          disabled={addedFriends[friend.id]}
+                        >
+                          <UserPlus className="w-4 h-4" />
+                          {addedFriends[friend.id] ? "Sent" : "Add"}
+                        </button>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
 
@@ -150,14 +269,17 @@ export default function DashboardPage() {
                   Currently Reading
                 </h3>
                 <div className="space-y-4">
-                  {recentBooks.length > 0 ? (
-                    recentBooks.map((book) => (
-                      <div key={book.id} className="pb-4 border-b border-slate-200 dark:border-slate-700 last:border-b-0">
+                  {currentlyReading.length > 0 ? (
+                    currentlyReading.map((book) => (
+                      <div
+                        key={book.id}
+                        className="pb-4 border-b border-slate-200 dark:border-slate-700 last:border-b-0"
+                      >
                         <h4 className="font-semibold text-slate-900 dark:text-amber-50 line-clamp-1">
-                          {book.title}
+                          {book.book.title}
                         </h4>
                         <p className="text-sm text-slate-600 dark:text-slate-400">
-                          {book.author}
+                          {book.book.author ?? "Unknown"}
                         </p>
                         {book.status === "reading" && (
                           <>
@@ -202,7 +324,7 @@ export default function DashboardPage() {
                       Books Read
                     </span>
                     <span className="font-semibold text-slate-900 dark:text-amber-50">
-                      12
+                      {stats.booksRead}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
@@ -210,7 +332,7 @@ export default function DashboardPage() {
                       Pages This Year
                     </span>
                     <span className="font-semibold text-slate-900 dark:text-amber-50">
-                      2,847
+                      {stats.totalPages}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
@@ -218,7 +340,7 @@ export default function DashboardPage() {
                       Reading Streak
                     </span>
                     <span className="font-semibold text-slate-900 dark:text-amber-50">
-                      15 days
+                      {stats.readingStreak} days
                     </span>
                   </div>
                 </div>

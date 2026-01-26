@@ -159,7 +159,7 @@ npx prisma db seed # Optional: seed sample data
 ```bash
 # Generate NextAuth secret
 openssl rand -base64 32
-# Add to .env.local as NEXTAUTH_SECRET
+# Add to .env.local as AUTH_SECRET
 ```
 
 4. **Run development server**
@@ -177,8 +177,8 @@ Visit `http://localhost:3000`
 DATABASE_URL="postgresql://user:password@localhost:5432/book_tracker"
 
 # NextAuth
-NEXTAUTH_SECRET="your-generated-secret-here"
-NEXTAUTH_URL="http://localhost:3000"
+AUTH_SECRET="your-generated-secret-here"
+AUTH_URL="http://localhost:3000"
 
 # Optional: OAuth providers
 # GITHUB_ID="your-github-id"

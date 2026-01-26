@@ -87,7 +87,7 @@ createdb book_tracker
 npx prisma migrate dev --name init
 ```
 
-### Issue: "NEXTAUTH_SECRET is not set"
+### Issue: "AUTH_SECRET is not set"
 ```
 Error: NextAuth secret is required
 ```
@@ -98,7 +98,7 @@ Error: NextAuth secret is required
 openssl rand -base64 32
 
 # Add to .env.local
-NEXTAUTH_SECRET="your-generated-secret-here"
+AUTH_SECRET="your-generated-secret-here"
 
 # Restart dev server
 npm run dev
@@ -153,8 +153,8 @@ npx prisma studio
 # 2. Check password hashing
 # Make sure bcrypt is comparing correctly
 
-# 3. Check NEXTAUTH_SECRET is set
-echo $NEXTAUTH_SECRET
+# 3. Check AUTH_SECRET is set
+echo $AUTH_SECRET
 
 # 4. Check session duration
 # Increase if too short: session: { maxAge: 30 * 24 * 60 * 60 }
@@ -199,8 +199,8 @@ Error: Unauthorized access to API
 # 1. User is logged in
 useSession() returns valid session
 
-# 2. NEXTAUTH_URL is correct
-# .env.local: NEXTAUTH_URL="http://localhost:3000"
+# 2. AUTH_URL is correct
+# .env.local: AUTH_URL="http://localhost:3000"
 
 # 3. Cookies are enabled in browser
 
@@ -345,8 +345,8 @@ npm run build
 
 # 3. Check environment variables in Vercel dashboard
 # DATABASE_URL must be set
-# NEXTAUTH_SECRET must be set
-# NEXTAUTH_URL must be your domain
+# AUTH_SECRET must be set
+# AUTH_URL must be your domain
 
 # 4. Check logs
 vercel logs

@@ -2,7 +2,7 @@
 
 import { Heart, MessageCircle, Bookmark, Share2, User } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 interface PostCardProps {
   id: string;
@@ -11,14 +11,14 @@ interface PostCardProps {
     name: string;
     avatar?: string;
   };
-  type: "post" | "repost" | "quote";
+  type: "post" | "repost" | "quote" | "progress_update";
   book?: {
     title: string;
     author: string;
     coverImage?: string;
   };
   content?: string;
-  createdAt: Date;
+  createdAt: Date | string;
   likes: number;
   comments: number;
   isLiked?: boolean;
@@ -40,6 +40,10 @@ export function PostCard({
   const [liked, setLiked] = useState(isLiked);
   const [likeCount, setLikeCount] = useState(likes);
 
+  useEffect(() => {
+    setLikeCount(likes);
+  }, [likes]);
+
   const handleLike = () => {
     setLiked(!liked);
     setLikeCount(liked ? likeCount - 1 : likeCount + 1);
@@ -52,6 +56,8 @@ export function PostCard({
         return "Reposted";
       case "quote":
         return "Shared a quote";
+      case "progress_update":
+        return "Shared progress";
       default:
         return "Posted";
     }
@@ -73,13 +79,13 @@ export function PostCard({
           )}
         </div>
         <div className="flex-1">
-          <Link href={`/profile/${author.id}`}>
+          <Link href="/profile">
             <h3 className="font-semibold text-slate-900 dark:text-amber-50 hover:text-amber-600 dark:hover:text-amber-400">
               {author.name}
             </h3>
           </Link>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            {getTypeLabel()} - {createdAt.toLocaleDateString()}
+            {getTypeLabel()} - {new Date(createdAt).toLocaleDateString()}
           </p>
         </div>
       </div>

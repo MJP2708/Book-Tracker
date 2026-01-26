@@ -34,15 +34,15 @@ DATABASE_URL="postgresql://username:password@localhost:5432/book_tracker"
 # Or use cloud DB: DATABASE_URL="postgresql://user:password@aws-xxxx.neon.tech/book_tracker"
 
 # NextAuth Configuration
-NEXTAUTH_SECRET="$(openssl rand -base64 32)"
-NEXTAUTH_URL="http://localhost:3000"
+AUTH_SECRET="$(openssl rand -base64 32)"
+AUTH_URL="http://localhost:3000"
 
 # Optional: For future OAuth integration
 # GITHUB_ID="your-github-app-id"
 # GITHUB_SECRET="your-github-app-secret"
 ```
 
-**To generate NEXTAUTH_SECRET:**
+**To generate AUTH_SECRET:**
 ```bash
 # macOS/Linux:
 openssl rand -base64 32
@@ -104,8 +104,8 @@ git push -u origin main
 
 # 3. Configure environment variables in Vercel dashboard:
 # - DATABASE_URL (use managed database or Neon)
-# - NEXTAUTH_SECRET
-# - NEXTAUTH_URL (your Vercel domain)
+# - AUTH_SECRET
+# - AUTH_URL (your Vercel domain)
 ```
 
 ### Deploy to Other Platforms
@@ -150,7 +150,7 @@ pm2 start "npm start" --name bookshelf
 openssl rand -base64 32
 
 # Add to .env.local
-NEXTAUTH_SECRET="your-generated-secret"
+AUTH_SECRET="your-generated-secret"
 ```
 
 ### Issue: "Permission denied" on migrations
@@ -209,8 +209,8 @@ npm install
 Before going live:
 
 - [ ] Set up production database
-- [ ] Generate new NEXTAUTH_SECRET
-- [ ] Update NEXTAUTH_URL to production domain
+- [ ] Generate new AUTH_SECRET
+- [ ] Update AUTH_URL to production domain
 - [ ] Set NODE_ENV=production
 - [ ] Enable HTTPS
 - [ ] Setup database backups

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Sparkles, BookOpen, Share2, Quote } from "lucide-react";
 
 interface CreatePostProps {
-  onPost?: (data: { type: string; content: string }) => void;
+  onPost?: (data: { type: string; content: string }) => Promise<void> | void;
 }
 
 export function CreatePostForm({ onPost }: CreatePostProps) {
@@ -12,13 +12,26 @@ export function CreatePostForm({ onPost }: CreatePostProps) {
   const [postType, setPostType] = useState<"post" | "quote" | "progress">(
     "post"
   );
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!content.trim()) return;
 
-    onPost?.({ type: postType, content });
-    setContent("");
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      await onPost?.({ type: postType, content });
+      setContent("");
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to share your post."
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -77,15 +90,19 @@ export function CreatePostForm({ onPost }: CreatePostProps) {
           rows={4}
         />
 
+        {error && (
+          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+        )}
+
         {/* Submit Button */}
         <div className="flex justify-end">
           <button
             type="submit"
-            disabled={!content.trim()}
+            disabled={!content.trim() || isSubmitting}
             className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Share2 className="w-4 h-4" />
-            Share
+            {isSubmitting ? "Sharing..." : "Share"}
           </button>
         </div>
       </form>

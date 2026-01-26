@@ -49,8 +49,8 @@ createdb book_tracker
 # 4. Configure environment
 # Create .env.local with:
 # DATABASE_URL="postgresql://user:password@localhost:5432/book_tracker"
-# NEXTAUTH_SECRET="your-secret-here"
-# NEXTAUTH_URL="http://localhost:3000"
+# AUTH_SECRET="your-secret-here"
+# AUTH_URL="http://localhost:3000"
 
 # 5. Setup schema
 npx prisma migrate dev --name init
@@ -440,7 +440,7 @@ See [SETUP-GUIDE.md](./SETUP-GUIDE.md) for full instructions.
 ### Before Deployment
 - [ ] Database setup (production)
 - [ ] Environment variables set
-- [ ] NEXTAUTH_SECRET generated
+- [ ] AUTH_SECRET generated
 - [ ] Domain configured
 - [ ] Email service ready
 - [ ] Backups configured

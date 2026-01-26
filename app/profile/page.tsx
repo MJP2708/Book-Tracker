@@ -13,37 +13,94 @@ import {
   Edit,
   Loader2,
 } from "lucide-react";
-import { useState } from "react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+
+type ProfileData = {
+  user: {
+    id: string;
+    name: string | null;
+    email: string;
+    bio?: string | null;
+    createdAt: string;
+  };
+  stats: {
+    booksRead: number;
+    totalPages: number;
+    readingStreak: number;
+    favoriteGenre?: string | null;
+  };
+  counts: {
+    followers: number;
+    following: number;
+  };
+};
+
+type UserBook = {
+  id: string;
+  status: string;
+  rating?: number | null;
+  finishedAt?: string | null;
+  createdAt: string;
+  book: { title: string; author?: string | null };
+};
 
 export default function ProfilePage() {
   const { data: session } = useSession();
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [bio, setBio] = useState("A passionate reader and book lover.");
+  const [bio, setBio] = useState("");
+  const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [history, setHistory] = useState<UserBook[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (!session) {
       router.push("/auth/login");
+      return;
     }
+    void loadProfile();
   }, [session, router]);
 
-  const stats = {
-    booksRead: 42,
-    currentlyReading: 3,
-    followers: 128,
-    following: 95,
-    favoriteGenre: "Literary Fiction",
-    joinDate: "Jan 2024",
+  const loadProfile = async () => {
+    setIsLoading(true);
+    try {
+      const [meRes, libraryRes] = await Promise.all([
+        fetch("/api/me"),
+        fetch("/api/library"),
+      ]);
+
+      if (meRes.ok) {
+        const data = (await meRes.json()) as ProfileData;
+        setProfile(data);
+        setBio(data.user.bio ?? "");
+      }
+      if (libraryRes.ok) {
+        const data = (await libraryRes.json()) as UserBook[];
+        setHistory(data);
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSave = async () => {
     setIsSaving(true);
-    // Save bio to server
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setIsSaving(false);
-    setIsEditing(false);
+    try {
+      const response = await fetch("/api/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bio }),
+      });
+      if (response.ok) {
+        const data = (await response.json()) as ProfileData;
+        setProfile(data);
+        setBio(data.user.bio ?? "");
+        setIsEditing(false);
+      }
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   if (!session) {
@@ -55,26 +112,23 @@ export default function ProfilePage() {
       <Navigation />
       <main className="min-h-screen bg-amber-50 dark:bg-slate-900">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Profile Header */}
           <div className="card-bookish mb-8">
             <div className="flex flex-col sm:flex-row gap-6 sm:items-start">
-              {/* Avatar */}
               <div className="flex-shrink-0">
                 <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-amber-400 to-orange-400 flex items-center justify-center">
                   <User className="w-12 h-12 sm:w-16 sm:h-16 text-white" />
                 </div>
               </div>
 
-              {/* Profile Info */}
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <h1 className="font-serif-title text-amber-900 dark:text-amber-50">
-                      {session.user?.name}
+                      {profile?.user.name ?? session.user?.name ?? "Reader"}
                     </h1>
                     <p className="text-sm text-slate-600 dark:text-slate-400 flex items-center gap-2 mt-1">
                       <Mail className="w-4 h-4" />
-                      {session.user?.email}
+                      {profile?.user.email ?? session.user?.email}
                     </p>
                   </div>
                   <button
@@ -86,7 +140,6 @@ export default function ProfilePage() {
                   </button>
                 </div>
 
-                {/* Bio */}
                 {isEditing ? (
                   <div className="space-y-3">
                     <textarea
@@ -101,7 +154,9 @@ export default function ProfilePage() {
                         disabled={isSaving}
                         className="btn-primary flex items-center gap-2 disabled:opacity-50"
                       >
-                        {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+                        {isSaving && (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        )}
                         {isSaving ? "Saving..." : "Save"}
                       </button>
                       <button
@@ -113,10 +168,12 @@ export default function ProfilePage() {
                     </div>
                   </div>
                 ) : (
-                  <p className="text-slate-700 dark:text-slate-300">{bio}</p>
+                  <p className="text-slate-700 dark:text-slate-300">
+                    {bio ||
+                      "Add a short bio to let others know what you love to read."}
+                  </p>
                 )}
 
-                {/* Stats */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
                   <div>
                     <p className="text-sm text-slate-600 dark:text-slate-400">
@@ -124,7 +181,9 @@ export default function ProfilePage() {
                       Joined
                     </p>
                     <p className="font-semibold text-slate-900 dark:text-amber-50">
-                      {stats.joinDate}
+                      {profile
+                        ? new Date(profile.user.createdAt).toLocaleDateString()
+                        : "--"}
                     </p>
                   </div>
                   <div>
@@ -133,7 +192,7 @@ export default function ProfilePage() {
                       Followers
                     </p>
                     <p className="font-semibold text-slate-900 dark:text-amber-50">
-                      {stats.followers}
+                      {profile?.counts.followers ?? 0}
                     </p>
                   </div>
                   <div>
@@ -142,7 +201,7 @@ export default function ProfilePage() {
                       Books Read
                     </p>
                     <p className="font-semibold text-slate-900 dark:text-amber-50">
-                      {stats.booksRead}
+                      {profile?.stats.booksRead ?? 0}
                     </p>
                   </div>
                   <div>
@@ -151,7 +210,7 @@ export default function ProfilePage() {
                       Favorite Genre
                     </p>
                     <p className="font-semibold text-slate-900 dark:text-amber-50">
-                      Fiction
+                      {profile?.stats.favoriteGenre ?? "--"}
                     </p>
                   </div>
                 </div>
@@ -159,66 +218,80 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Tabs */}
           <div className="space-y-6">
-            {/* Reading History */}
             <div className="card-bookish">
               <h2 className="font-serif-subtitle text-slate-900 dark:text-amber-50 mb-4">
-                📚 Reading History
+                Reading History
               </h2>
               <div className="space-y-4">
-                {[1, 2, 3].map((item) => (
-                  <div
-                    key={item}
-                    className="flex gap-4 pb-4 border-b border-slate-200 dark:border-slate-700 last:border-b-0"
-                  >
-                    <div className="w-12 h-16 bg-gradient-to-br from-amber-200 to-orange-300 rounded book-shadow flex-shrink-0" />
-                    <div className="flex-1">
-                      <h3 className="font-serif-subtitle text-slate-900 dark:text-amber-50">
-                        Book Title {item}
-                      </h3>
-                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
-                        Author Name
-                      </p>
-                      <div className="flex items-center gap-2 text-xs text-slate-500">
-                        <span className="badge">Fiction</span>
-                        <span>★★★★★</span>
-                        <span>Finished Jan {item}, 2024</span>
+                {isLoading ? (
+                  <div className="text-sm text-slate-500 dark:text-slate-400">
+                    Loading reading history...
+                  </div>
+                ) : history.length === 0 ? (
+                  <div className="text-sm text-slate-500 dark:text-slate-400">
+                    No books yet. Add your first book to start tracking.
+                  </div>
+                ) : (
+                  history.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex gap-4 pb-4 border-b border-slate-200 dark:border-slate-700 last:border-b-0"
+                    >
+                      <div className="w-12 h-16 bg-gradient-to-br from-amber-200 to-orange-300 rounded book-shadow flex-shrink-0" />
+                      <div className="flex-1">
+                        <h3 className="font-serif-subtitle text-slate-900 dark:text-amber-50">
+                          {item.book.title}
+                        </h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
+                          {item.book.author ?? "Unknown author"}
+                        </p>
+                        <div className="flex items-center gap-2 text-xs text-slate-500">
+                          <span className="badge">{item.status}</span>
+                          {item.rating ? (
+                            <span>{"*".repeat(item.rating)}</span>
+                          ) : null}
+                          <span>
+                            {item.finishedAt
+                              ? `Finished ${new Date(
+                                  item.finishedAt
+                                ).toLocaleDateString()}`
+                              : `Added ${new Date(
+                                  item.createdAt
+                                ).toLocaleDateString()}`}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
 
-            {/* Recent Activity */}
             <div className="card-bookish">
               <h2 className="font-serif-subtitle text-slate-900 dark:text-amber-50 mb-4">
-                ✨ Recent Activity
+                Recent Activity
               </h2>
               <div className="space-y-4 text-sm">
-                <div className="flex gap-3 items-start">
-                  <div className="w-2 h-2 rounded-full bg-amber-500 mt-2 flex-shrink-0" />
-                  <div>
-                    <p className="text-slate-700 dark:text-slate-300">
-                      Finished reading "The Midnight Library"
-                    </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-500">
-                      2 days ago
-                    </p>
+                {history.slice(0, 2).map((item) => (
+                  <div key={item.id} className="flex gap-3 items-start">
+                    <div className="w-2 h-2 rounded-full bg-amber-500 mt-2 flex-shrink-0" />
+                    <div>
+                      <p className="text-slate-700 dark:text-slate-300">
+                        {item.status === "finished" ? "Finished" : "Updated"}{" "}
+                        reading "{item.book.title}"
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-500">
+                        {new Date(item.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
                   </div>
-                </div>
-                <div className="flex gap-3 items-start">
-                  <div className="w-2 h-2 rounded-full bg-amber-500 mt-2 flex-shrink-0" />
-                  <div>
-                    <p className="text-slate-700 dark:text-slate-300">
-                      Started reading "Atomic Habits"
-                    </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-500">
-                      1 week ago
-                    </p>
-                  </div>
-                </div>
+                ))}
+                {history.length === 0 && !isLoading && (
+                  <p className="text-slate-500 dark:text-slate-400">
+                    No recent activity yet.
+                  </p>
+                )}
               </div>
             </div>
           </div>
