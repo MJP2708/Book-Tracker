@@ -38,13 +38,17 @@ type SuggestionsUser = {
 
 export default function DashboardPage() {
   const [addedFriends, setAddedFriends] = useState<Record<string, boolean>>({});
-  const { status } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [recentBooks, setRecentBooks] = useState<UserBook[]>([]);
   const [suggestedFriends, setSuggestedFriends] = useState<SuggestionsUser[]>(
     []
   );
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<SuggestionsUser[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [stats, setStats] = useState({
     booksRead: 0,
     totalPages: 0,
@@ -133,6 +137,14 @@ export default function DashboardPage() {
     );
   };
 
+  const handleDeletePost = async (postId: string) => {
+    const response = await fetch(`/api/posts/${postId}`, { method: "DELETE" });
+    if (!response.ok) {
+      return;
+    }
+    setPosts((prev) => prev.filter((post) => post.id !== postId));
+  };
+
   const handleFollow = async (userId: string) => {
     const response = await fetch(`/api/users/${userId}/follow`, {
       method: "POST",
@@ -141,6 +153,34 @@ export default function DashboardPage() {
       return;
     }
     setAddedFriends((prev) => ({ ...prev, [userId]: true }));
+  };
+
+  const handleSearch = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const query = searchQuery.trim();
+    if (!query) {
+      setSearchResults([]);
+      setSearchError(null);
+      return;
+    }
+    setSearchLoading(true);
+    setSearchError(null);
+    try {
+      const response = await fetch(
+        `/api/users/search?query=${encodeURIComponent(query)}`
+      );
+      if (!response.ok) {
+        throw new Error("Failed to search users.");
+      }
+      const results = (await response.json()) as SuggestionsUser[];
+      setSearchResults(results);
+    } catch (err) {
+      setSearchError(
+        err instanceof Error ? err.message : "Failed to search users."
+      );
+    } finally {
+      setSearchLoading(false);
+    }
   };
 
   if (status === "loading") {
@@ -203,6 +243,8 @@ export default function DashboardPage() {
                       likes={post._count.likes}
                       comments={post._count.comments}
                       onLike={() => handleToggleLike(post.id)}
+                      currentUserId={session?.user?.id}
+                      onDelete={() => handleDeletePost(post.id)}
                     />
                   ))
                 )}
@@ -225,6 +267,69 @@ export default function DashboardPage() {
                     Grow your circle and share shelves.
                   </p>
                 </div>
+                <form onSubmit={handleSearch} className="space-y-3 mb-4">
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <input
+                      type="text"
+                      placeholder="Find friends by username"
+                      value={searchQuery}
+                      onChange={(event) => setSearchQuery(event.target.value)}
+                      className="w-full rounded-lg border border-amber-200 bg-white px-4 py-2 text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-400 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100"
+                    />
+                    <button
+                      type="submit"
+                      className="btn-primary w-full sm:w-auto"
+                      disabled={searchLoading}
+                    >
+                      {searchLoading ? "Searching..." : "Find"}
+                    </button>
+                  </div>
+                  {searchError && (
+                    <p className="text-xs text-red-600 dark:text-red-400">
+                      {searchError}
+                    </p>
+                  )}
+                </form>
+                {searchResults.length > 0 && (
+                  <div className="space-y-3 mb-4">
+                    {searchResults.map((friend) => (
+                      <div
+                        key={friend.id}
+                        className="flex items-center justify-between gap-3 rounded-lg border border-amber-100 dark:border-slate-700 p-3"
+                      >
+                        <div className="min-w-0">
+                          <p className="font-medium text-slate-900 dark:text-amber-50 truncate">
+                            {friend.name ?? "Reader"}
+                          </p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            {friend.favoriteGenre ?? "Book lover"}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          className={`btn-secondary px-3 py-2 text-sm gap-1 ${
+                            addedFriends[friend.id]
+                              ? "cursor-default opacity-80"
+                              : ""
+                          }`}
+                          onClick={() => handleFollow(friend.id)}
+                          disabled={addedFriends[friend.id]}
+                        >
+                          <UserPlus className="w-4 h-4" />
+                          {addedFriends[friend.id] ? "Sent" : "Add"}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {!searchLoading &&
+                  searchQuery.trim().length > 0 &&
+                  searchResults.length === 0 &&
+                  !searchError && (
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+                      No users found for "{searchQuery.trim()}".
+                    </p>
+                  )}
                 <div className="space-y-3">
                   {suggestedFriends.length === 0 ? (
                     <p className="text-sm text-slate-500 dark:text-slate-400">

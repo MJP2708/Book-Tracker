@@ -18,7 +18,7 @@ type FeedPost = {
 };
 
 export default function FeedPage() {
-  const { status } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -83,6 +83,16 @@ export default function FeedPage() {
     );
   };
 
+  const handleDeletePost = async (postId: string) => {
+    const response = await fetch(`/api/posts/${postId}`, {
+      method: "DELETE",
+    });
+    if (!response.ok) {
+      return;
+    }
+    setPosts((prev) => prev.filter((post) => post.id !== postId));
+  };
+
   if (status === "loading") {
     return null;
   }
@@ -142,6 +152,8 @@ export default function FeedPage() {
                   likes={post._count.likes}
                   comments={post._count.comments}
                   onLike={() => handleToggleLike(post.id)}
+                  currentUserId={session?.user?.id}
+                  onDelete={() => handleDeletePost(post.id)}
                 />
               ))
             )}

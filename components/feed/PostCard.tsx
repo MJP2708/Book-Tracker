@@ -1,6 +1,6 @@
 "use client";
 
-import { Heart, MessageCircle, Bookmark, Share2, User } from "lucide-react";
+import { Bookmark, Heart, MessageCircle, Share2, Trash2, User } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -23,6 +23,8 @@ interface PostCardProps {
   comments: number;
   isLiked?: boolean;
   onLike?: () => void;
+  currentUserId?: string;
+  onDelete?: () => void;
 }
 
 export function PostCard({
@@ -36,6 +38,8 @@ export function PostCard({
   comments,
   isLiked = false,
   onLike,
+  currentUserId,
+  onDelete,
 }: PostCardProps) {
   const [liked, setLiked] = useState(isLiked);
   const [likeCount, setLikeCount] = useState(likes);
@@ -143,6 +147,14 @@ export function PostCard({
         <button className="flex items-center gap-2 hover:text-emerald-500 transition-colors">
           <Share2 className="w-5 h-5" />
         </button>
+        {currentUserId && currentUserId === author.id && onDelete ? (
+          <button
+            onClick={onDelete}
+            className="flex items-center gap-2 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+          >
+            <Trash2 className="w-5 h-5" />
+          </button>
+        ) : null}
       </div>
     </div>
   );
