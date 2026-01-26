@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
-import { BookOpen, Home, Users, User, LogOut, Menu } from "lucide-react";
+import { BookOpen, Home, MessageCircle, Users, User, LogOut, Menu } from "lucide-react";
 import { useState } from "react";
 
 export function Navigation() {
@@ -45,6 +45,13 @@ export function Navigation() {
                 >
                   <Users className="w-5 h-5" />
                   Feed
+                </Link>
+                <Link
+                  href="/messages"
+                  className="flex items-center gap-2 text-slate-700 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
+                >
+                  <MessageCircle className="w-5 h-5" />
+                  Messages
                 </Link>
                 <Link
                   href="/profile"
@@ -104,6 +111,12 @@ export function Navigation() {
                   className="block px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
                 >
                   Feed
+                </Link>
+                <Link
+                  href="/messages"
+                  className="block px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
+                >
+                  Messages
                 </Link>
                 <Link
                   href="/profile"

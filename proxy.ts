@@ -13,6 +13,7 @@ export default async function middleware(request: NextRequest) {
     "/profile",
     "/library",
     "/books",
+    "/messages",
   ];
 
   const isProtected = protectedRoutes.some((route) =>

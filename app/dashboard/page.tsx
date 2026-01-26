@@ -36,6 +36,12 @@ type SuggestionsUser = {
   favoriteGenre?: string | null;
 };
 
+type FriendRequest = {
+  id: string;
+  sender: { id: string; name: string | null };
+  createdAt: string;
+};
+
 export default function DashboardPage() {
   const [addedFriends, setAddedFriends] = useState<Record<string, boolean>>({});
   const { data: session, status } = useSession();
@@ -49,6 +55,7 @@ export default function DashboardPage() {
   const [searchResults, setSearchResults] = useState<SuggestionsUser[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [stats, setStats] = useState({
     booksRead: 0,
     totalPages: 0,
@@ -72,11 +79,13 @@ export default function DashboardPage() {
   const loadDashboard = async () => {
     setIsLoading(true);
     try {
-      const [postsRes, booksRes, meRes, suggestionsRes] = await Promise.all([
+      const [postsRes, booksRes, meRes, suggestionsRes, requestsRes] =
+        await Promise.all([
         fetch("/api/posts?limit=3"),
         fetch("/api/library"),
         fetch("/api/me"),
         fetch("/api/users/suggestions"),
+        fetch("/api/friends/requests"),
       ]);
 
       if (postsRes.ok) {
@@ -99,6 +108,11 @@ export default function DashboardPage() {
       if (suggestionsRes.ok) {
         const suggestionData = (await suggestionsRes.json()) as SuggestionsUser[];
         setSuggestedFriends(suggestionData);
+      }
+
+      if (requestsRes.ok) {
+        const requestData = (await requestsRes.json()) as FriendRequest[];
+        setFriendRequests(requestData);
       }
     } finally {
       setIsLoading(false);
@@ -145,14 +159,42 @@ export default function DashboardPage() {
     setPosts((prev) => prev.filter((post) => post.id !== postId));
   };
 
-  const handleFollow = async (userId: string) => {
-    const response = await fetch(`/api/users/${userId}/follow`, {
+  const handleSendRequest = async (userId: string) => {
+    const response = await fetch("/api/friends/requests", {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId }),
     });
     if (!response.ok) {
       return;
     }
     setAddedFriends((prev) => ({ ...prev, [userId]: true }));
+  };
+
+  const handleAcceptRequest = async (requestId: string) => {
+    const response = await fetch(
+      `/api/friends/requests/${requestId}/accept`,
+      { method: "POST" }
+    );
+    if (!response.ok) {
+      return;
+    }
+    setFriendRequests((prev) =>
+      prev.filter((request) => request.id !== requestId)
+    );
+  };
+
+  const handleDeclineRequest = async (requestId: string) => {
+    const response = await fetch(
+      `/api/friends/requests/${requestId}/decline`,
+      { method: "POST" }
+    );
+    if (!response.ok) {
+      return;
+    }
+    setFriendRequests((prev) =>
+      prev.filter((request) => request.id !== requestId)
+    );
   };
 
   const handleSearch = async (event: React.FormEvent) => {
@@ -312,7 +354,7 @@ export default function DashboardPage() {
                               ? "cursor-default opacity-80"
                               : ""
                           }`}
-                          onClick={() => handleFollow(friend.id)}
+                          onClick={() => handleSendRequest(friend.id)}
                           disabled={addedFriends[friend.id]}
                         >
                           <UserPlus className="w-4 h-4" />
@@ -356,7 +398,7 @@ export default function DashboardPage() {
                               ? "cursor-default opacity-80"
                               : ""
                           }`}
-                          onClick={() => handleFollow(friend.id)}
+                          onClick={() => handleSendRequest(friend.id)}
                           disabled={addedFriends[friend.id]}
                         >
                           <UserPlus className="w-4 h-4" />
@@ -366,6 +408,51 @@ export default function DashboardPage() {
                     ))
                   )}
                 </div>
+              </div>
+
+              <div className="card-bookish mb-6">
+                <h3 className="font-serif-subtitle text-slate-900 dark:text-amber-50 mb-4">
+                  Friend Requests
+                </h3>
+                {friendRequests.length === 0 ? (
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    No new requests.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {friendRequests.map((request) => (
+                      <div
+                        key={request.id}
+                        className="flex items-center justify-between gap-3 rounded-lg border border-amber-100 dark:border-slate-700 p-3"
+                      >
+                        <div className="min-w-0">
+                          <p className="font-medium text-slate-900 dark:text-amber-50 truncate">
+                            {request.sender.name ?? "Reader"}
+                          </p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            Wants to connect
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            className="btn-primary px-3 py-2 text-sm"
+                            onClick={() => handleAcceptRequest(request.id)}
+                          >
+                            Accept
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-secondary px-3 py-2 text-sm"
+                            onClick={() => handleDeclineRequest(request.id)}
+                          >
+                            Decline
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Reading Goals */}
