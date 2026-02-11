@@ -22,7 +22,7 @@ export async function GET() {
     const users = await prisma.user.findMany({
       where: {
         id: { not: user.id },
-        followers: {
+        following: {
           none: { followerId: user.id },
         },
       },

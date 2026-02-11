@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
           OR: [
             { id: user.id },
             {
-              followers: {
+              following: {
                 some: { followerId: user.id },
               },
             },

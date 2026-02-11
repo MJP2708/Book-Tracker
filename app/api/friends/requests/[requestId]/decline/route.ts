@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(
   _request: NextRequest,
-  context: { params: Promise<{ requestId: string }> }
+  context: { params: { requestId: string } }
 ) {
   try {
     const session = await auth();
@@ -22,7 +22,7 @@ export async function POST(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const { requestId } = await context.params;
+    const { requestId } = context.params;
 
     const requestRecord = await prisma.friendRequest.findUnique({
       where: { id: requestId },

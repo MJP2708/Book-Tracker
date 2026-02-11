@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
   _request: NextRequest,
-  context: { params: Promise<{ threadId: string }> }
+  context: { params: { threadId: string } }
 ) {
   try {
     const session = await auth();
@@ -22,7 +22,7 @@ export async function GET(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const { threadId } = await context.params;
+    const { threadId } = context.params;
 
     const conversation = await prisma.conversation.findUnique({
       where: { id: threadId },
@@ -76,7 +76,7 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  context: { params: Promise<{ threadId: string }> }
+  context: { params: { threadId: string } }
 ) {
   try {
     const session = await auth();
@@ -92,7 +92,7 @@ export async function POST(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const { threadId } = await context.params;
+    const { threadId } = context.params;
     const { content } = await request.json();
 
     if (!content || typeof content !== "string" || content.trim().length === 0) {

@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function DELETE(
   _request: NextRequest,
-  context: { params: Promise<{ postId: string }> }
+  context: { params: { postId: string } }
 ) {
   try {
     const session = await auth();
@@ -22,7 +22,7 @@ export async function DELETE(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const { postId } = await context.params;
+    const { postId } = context.params;
 
     const post = await prisma.post.findUnique({
       where: { id: postId },

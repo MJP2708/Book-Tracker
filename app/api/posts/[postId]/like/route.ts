@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(
   request: NextRequest,
-  context: { params: Promise<{ postId: string }> }
+  context: { params: { postId: string } }
 ) {
   try {
     const session = await auth();
@@ -22,7 +22,7 @@ export async function POST(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const { postId } = await context.params;
+    const { postId } = context.params;
 
     // Check if already liked
     const existing = await prisma.like.findUnique({

@@ -44,8 +44,8 @@ export async function GET() {
         favoriteGenre: user.readingStats?.favoriteGenre ?? null,
       },
       counts: {
-        followers: user._count.followers,
-        following: user._count.following,
+        followers: user._count.following,
+        following: user._count.followers,
         userBooks: user._count.userBooks,
       },
     });
@@ -97,8 +97,8 @@ export async function PATCH(request: NextRequest) {
         favoriteGenre: user.readingStats?.favoriteGenre ?? null,
       },
       counts: {
-        followers: user._count.followers,
-        following: user._count.following,
+        followers: user._count.following,
+        following: user._count.followers,
         userBooks: user._count.userBooks,
       },
     });
