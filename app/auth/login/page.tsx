@@ -4,20 +4,14 @@ import Link from "next/link";
 import { Navigation } from "@/components/Navigation";
 import { BookOpen } from "lucide-react";
 import { signIn } from "next-auth/react";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [from, setFrom] = useState("/dashboard");
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    setFrom(params.get("from") || "/dashboard");
-  }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -26,17 +20,18 @@ export default function LoginPage() {
 
     const result = await signIn("credentials", {
       email,
-      mode: "login",
       redirect: false,
     });
 
     setIsLoading(false);
 
     if (result?.error) {
-      setError("Account not found. Please sign up first.");
+      setError(`Sign-in failed: ${result.error}`);
       return;
     }
 
+    const params = new URLSearchParams(window.location.search);
+    const from = params.get("from") || "/dashboard";
     router.push(from);
   }
 

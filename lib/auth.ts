@@ -1,51 +1,61 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import { PrismaAdapter } from "@auth/prisma-adapter";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: PrismaAdapter(prisma),
+  trustHost: true,
   providers: [
     Credentials({
       name: "Email",
       credentials: {
         email: { label: "Email", type: "email" },
         name: { label: "Name", type: "text" },
-        mode: { label: "Mode", type: "text" },
       },
       async authorize(credentials) {
         const email = credentials?.email?.toString().trim().toLowerCase();
         const name = credentials?.name?.toString().trim();
-        const mode = credentials?.mode?.toString() || "login";
 
         if (!email) {
           return null;
         }
 
-        const existingUser = await prisma.user.findUnique({
-          where: { email },
-        });
+        try {
+          const existingUser = await prisma.user.findUnique({
+            where: { email },
+          });
 
-        if (mode === "signup") {
           if (existingUser) {
+            if (name && existingUser.name !== name) {
+              return prisma.user.update({
+                where: { id: existingUser.id },
+                data: { name },
+              });
+            }
             return existingUser;
           }
 
-          const createdUser = await prisma.user.create({
+          return await prisma.user.create({
             data: {
               email,
               name: name || email.split("@")[0],
             },
           });
+        } catch (error) {
+          const errorCode = typeof error === "object" && error && "code" in error ? String(error.code) : "";
 
-          return createdUser;
+          // If DB is unavailable, still allow temporary email auth.
+          if (errorCode === "ECONNREFUSED") {
+            const fallbackId = `local-${Buffer.from(email).toString("hex").slice(0, 24)}`;
+            return { id: fallbackId, email, name: name || email.split("@")[0] };
+          }
+
+          // Handle race where another request creates the same email.
+          if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+            return prisma.user.findUnique({ where: { email } });
+          }
+          throw error;
         }
-
-        if (!existingUser) {
-          return null;
-        }
-
-        return existingUser;
       },
     }),
   ],

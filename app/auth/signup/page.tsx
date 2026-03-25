@@ -22,14 +22,13 @@ export default function SignupPage() {
     const result = await signIn("credentials", {
       name,
       email,
-      mode: "signup",
       redirect: false,
     });
 
     setIsLoading(false);
 
     if (result?.error) {
-      setError("Unable to create account right now. Please try again.");
+      setError(`Sign-up failed: ${result.error}`);
       return;
     }
 
