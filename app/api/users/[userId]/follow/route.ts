@@ -1,6 +1,7 @@
 export const runtime = "nodejs";
 
 import { auth } from "@/lib/auth";
+import { toggleOfflineFollow } from "@/lib/offline-store";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -8,18 +9,22 @@ export async function POST(
   _request: NextRequest,
   context: { params: Promise<{ userId: string }> }
 ) {
-  try {
-    const session = await auth();
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const session = await auth();
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
+  const { userId: userIdToFollow } = await context.params;
+
+  try {
     const user = await prisma.user.findUnique({ where: { email: session.user.email } });
     if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      const offline = toggleOfflineFollow(session.user.email, userIdToFollow);
+      if ("error" in offline) {
+        return NextResponse.json({ error: offline.error }, { status: 400 });
+      }
+      return NextResponse.json({ isFollowing: offline.isFollowing }, { status: 200 });
     }
-
-    const { userId: userIdToFollow } = await context.params;
 
     if (user.id === userIdToFollow) {
       return NextResponse.json({ error: "Cannot follow yourself" }, { status: 400 });
@@ -52,6 +57,10 @@ export async function POST(
     return NextResponse.json({ isFollowing }, { status: 200 });
   } catch (error) {
     console.error("Follow toggle error:", error);
-    return NextResponse.json({ error: "Failed to toggle follow" }, { status: 500 });
+    const offline = toggleOfflineFollow(session.user.email, userIdToFollow);
+    if ("error" in offline) {
+      return NextResponse.json({ error: offline.error }, { status: 400 });
+    }
+    return NextResponse.json({ isFollowing: offline.isFollowing }, { status: 200 });
   }
 }

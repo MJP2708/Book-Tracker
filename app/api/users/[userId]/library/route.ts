@@ -1,6 +1,7 @@
 export const runtime = "nodejs";
 
 import { prisma } from "@/lib/prisma";
+import { getOfflinePublicProfile } from "@/lib/offline-store";
 import { statusFromShelfName } from "@/lib/shelf-utils";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -53,6 +54,11 @@ export async function GET(
     });
   } catch (error) {
     console.error("Public profile error", error);
-    return NextResponse.json({ error: "Failed to fetch profile" }, { status: 500 });
+    const { userId } = await context.params;
+    const profile = getOfflinePublicProfile(userId);
+    if (!profile) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+    return NextResponse.json(profile);
   }
 }

@@ -1,20 +1,21 @@
 export const runtime = "nodejs";
 
 import { auth } from "@/lib/auth";
+import { addOfflineLibraryEntry, getOrCreateOfflineUser, listOfflineLibrary } from "@/lib/offline-store";
 import { prisma } from "@/lib/prisma";
 import { ensureDefaultShelves, shelfNameFromStatus, statusFromShelfName } from "@/lib/shelf-utils";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET() {
-  try {
-    const session = await auth();
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const session = await auth();
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
+  try {
     const user = await prisma.user.findUnique({ where: { email: session.user.email } });
     if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return NextResponse.json(listOfflineLibrary(session.user.email));
     }
 
     await ensureDefaultShelves(user.id);
@@ -46,24 +47,40 @@ export async function GET() {
     );
   } catch (error) {
     console.error("Library fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch library" }, { status: 500 });
+    return NextResponse.json(listOfflineLibrary(session.user.email));
   }
 }
 
 export async function POST(request: NextRequest) {
-  try {
-    const session = await auth();
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const session = await auth();
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
+  const body = await request.json();
+  const { bookId, status, pagesRead, notes, tags } = body;
+
+  try {
     const user = await prisma.user.findUnique({ where: { email: session.user.email } });
     if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      const ensured = getOrCreateOfflineUser(session.user.email, session.user.name || undefined);
+      if (!ensured) {
+        return NextResponse.json({ error: "User not found" }, { status: 404 });
+      }
+      const created = addOfflineLibraryEntry(session.user.email, {
+        bookId,
+        status: typeof status === "string" ? (status as "unread" | "reading" | "finished") : "unread",
+        pagesRead: Number.isFinite(Number(pagesRead)) ? Number(pagesRead) : undefined,
+        notes: typeof notes === "string" ? notes : undefined,
+        tags: Array.isArray(tags) ? tags.map((tag) => String(tag).trim().toLowerCase()).filter(Boolean) : undefined,
+      });
+      if (!created) {
+        return NextResponse.json({ error: "Book not found" }, { status: 404 });
+      }
+      return NextResponse.json(created, { status: 201 });
     }
 
     const shelves = await ensureDefaultShelves(user.id);
-    const { bookId, status, pagesRead, notes, tags } = await request.json();
 
     if (!bookId || typeof bookId !== "string") {
       return NextResponse.json({ error: "bookId is required" }, { status: 400 });
@@ -122,6 +139,16 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     console.error("Add to library error:", error);
-    return NextResponse.json({ error: "Failed to add book" }, { status: 500 });
+    const created = addOfflineLibraryEntry(session.user.email, {
+      bookId,
+      status: typeof status === "string" ? (status as "unread" | "reading" | "finished") : "unread",
+      pagesRead: Number.isFinite(Number(pagesRead)) ? Number(pagesRead) : undefined,
+      notes: typeof notes === "string" ? notes : undefined,
+      tags: Array.isArray(tags) ? tags.map((tag) => String(tag).trim().toLowerCase()).filter(Boolean) : undefined,
+    });
+    if (!created) {
+      return NextResponse.json({ error: "Book not found" }, { status: 404 });
+    }
+    return NextResponse.json(created, { status: 201 });
   }
 }

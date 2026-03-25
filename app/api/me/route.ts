@@ -1,17 +1,18 @@
 export const runtime = "nodejs";
 
 import { auth } from "@/lib/auth";
+import { getOfflineProfile, updateOfflineUser } from "@/lib/offline-store";
 import { prisma } from "@/lib/prisma";
 import { ensureDefaultShelves } from "@/lib/shelf-utils";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET() {
-  try {
-    const session = await auth();
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const session = await auth();
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
+  try {
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
       include: {
@@ -65,23 +66,24 @@ export async function GET() {
     });
   } catch (error) {
     console.error("Profile fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch profile" }, { status: 500 });
+    return NextResponse.json(getOfflineProfile(session.user.email));
   }
 }
 
 export async function PATCH(request: NextRequest) {
+  const session = await auth();
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { name, image, bio } = (await request.json()) as { name?: string; image?: string; bio?: string };
+
   try {
-    const session = await auth();
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { name, image } = (await request.json()) as { name?: string; image?: string };
-
     const user = await prisma.user.update({
       where: { email: session.user.email },
       data: {
         ...(typeof name === "string" ? { name } : {}),
+        ...(typeof bio === "string" ? { bio } : {}),
         ...(typeof image === "string" ? { image } : {}),
       },
       include: {
@@ -113,7 +115,7 @@ export async function PATCH(request: NextRequest) {
         id: user.id,
         name: user.name,
         email: user.email,
-        bio: null,
+        bio: user.bio,
         createdAt: user.createdAt,
       },
       stats: {
@@ -129,6 +131,11 @@ export async function PATCH(request: NextRequest) {
     });
   } catch (error) {
     console.error("Profile update error:", error);
-    return NextResponse.json({ error: "Failed to update profile" }, { status: 500 });
+    updateOfflineUser(session.user.email, {
+      ...(typeof name === "string" ? { name } : {}),
+      ...(typeof bio === "string" ? { bio } : {}),
+      ...(typeof image === "string" ? { image } : {}),
+    });
+    return NextResponse.json(getOfflineProfile(session.user.email));
   }
 }

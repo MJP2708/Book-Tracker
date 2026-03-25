@@ -1,16 +1,17 @@
 export const runtime = "nodejs";
 
 import { auth } from "@/lib/auth";
+import { listOfflineSuggestions } from "@/lib/offline-store";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
 export async function GET() {
-  try {
-    const session = await auth();
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const session = await auth();
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
+  try {
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
       include: {
@@ -46,6 +47,6 @@ export async function GET() {
     })));
   } catch (error) {
     console.error("Suggestions fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch suggestions" }, { status: 500 });
+    return NextResponse.json(listOfflineSuggestions(session.user.email));
   }
 }

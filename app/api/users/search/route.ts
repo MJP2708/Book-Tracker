@@ -1,23 +1,25 @@
 export const runtime = "nodejs";
 
 import { auth } from "@/lib/auth";
+import { searchOfflineUsers } from "@/lib/offline-store";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
-  try {
-    const session = await auth();
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const session = await auth();
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
+  const { searchParams } = new URL(request.url);
+  const query = (searchParams.get("query") || "").trim();
+
+  try {
     const user = await prisma.user.findUnique({ where: { email: session.user.email } });
     if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return NextResponse.json(searchOfflineUsers(session.user.email, query));
     }
 
-    const { searchParams } = new URL(request.url);
-    const query = (searchParams.get("query") || "").trim();
     if (!query) {
       return NextResponse.json([]);
     }
@@ -44,6 +46,6 @@ export async function GET(request: NextRequest) {
     })));
   } catch (error) {
     console.error("User search error:", error);
-    return NextResponse.json({ error: "Failed to search users" }, { status: 500 });
+    return NextResponse.json(searchOfflineUsers(session.user.email, query));
   }
 }
