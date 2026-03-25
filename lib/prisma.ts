@@ -1,33 +1,21 @@
 import { PrismaClient } from "@prisma/client";
-import { PrismaNeon } from "@prisma/adapter-neon";
-import { neonConfig } from "@neondatabase/serverless";
+import { PrismaPg } from "@prisma/adapter-pg";
 
-// Provide WebSocket impl for Neon in Node.js runtime (uses Next bundled ws)
-if (!neonConfig.webSocketConstructor) {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const ws = require("next/dist/compiled/ws");
-  neonConfig.webSocketConstructor = ws;
-}
-
-const globalForPrisma = global as unknown as {
+const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
-  neonAdapter: PrismaNeon | undefined;
 };
 
-const adapter =
-  globalForPrisma.neonAdapter ||
-  new PrismaNeon({
-    connectionString: process.env.DATABASE_URL,
-  });
+const adapter = new PrismaPg({
+  connectionString: process.env.DATABASE_URL,
+});
 
 export const prisma =
-  globalForPrisma.prisma ||
+  globalForPrisma.prisma ??
   new PrismaClient({
     adapter,
-    log: ["query"],
+    log: ["warn", "error"],
   });
 
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
-  globalForPrisma.neonAdapter = adapter;
 }

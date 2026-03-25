@@ -1,6 +1,7 @@
 export const runtime = "nodejs";
 
 import { prisma } from "@/lib/prisma";
+import { statusFromShelfName } from "@/lib/shelf-utils";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
@@ -17,7 +18,7 @@ export async function GET(
           id: true,
           name: true,
           bio: true,
-          avatar: true,
+          image: true,
           createdAt: true,
           _count: {
             select: {
@@ -29,7 +30,7 @@ export async function GET(
       }),
       prisma.userBook.findMany({
         where: { userId },
-        include: { book: true },
+        include: { book: true, shelf: true },
         orderBy: { updatedAt: "desc" },
       }),
     ]);
@@ -38,7 +39,18 @@ export async function GET(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ user, userBooks });
+    return NextResponse.json({
+      user,
+      userBooks: userBooks.map((entry) => ({
+        id: entry.id,
+        status: statusFromShelfName(entry.shelf.name),
+        book: {
+          id: entry.book.id,
+          title: entry.book.title,
+          author: entry.book.author,
+        },
+      })),
+    });
   } catch (error) {
     console.error("Public profile error", error);
     return NextResponse.json({ error: "Failed to fetch profile" }, { status: 500 });

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 
-// Keep middleware edge-safe: avoid Prisma/Node-only imports.
 export default async function middleware(request: NextRequest) {
   const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
   const token = await getToken({ req: request, secret });
@@ -9,16 +8,14 @@ export default async function middleware(request: NextRequest) {
 
   const protectedRoutes = [
     "/dashboard",
-    "/feed",
     "/profile",
-    "/library",
+    "/bookshelf",
     "/books",
-    "/messages",
+    "/learning-paths",
+    "/library",
   ];
 
-  const isProtected = protectedRoutes.some((route) =>
-    pathname.startsWith(route)
-  );
+  const isProtected = protectedRoutes.some((route) => pathname.startsWith(route));
 
   if (isProtected && !token) {
     const loginUrl = new URL("/auth/login", request.url);

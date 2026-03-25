@@ -11,17 +11,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    });
-
+    const user = await prisma.user.findUnique({ where: { email: session.user.email } });
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
     const { searchParams } = new URL(request.url);
     const query = (searchParams.get("query") || "").trim();
-
     if (!query) {
       return NextResponse.json([]);
     }
@@ -34,24 +30,20 @@ export async function GET(request: NextRequest) {
           mode: "insensitive",
         },
       },
-      take: 5,
-      include: {
-        readingStats: true,
+      take: 8,
+      select: {
+        id: true,
+        name: true,
       },
     });
 
-    return NextResponse.json(
-      users.map((candidate) => ({
-        id: candidate.id,
-        name: candidate.name,
-        favoriteGenre: candidate.readingStats?.favoriteGenre ?? null,
-      }))
-    );
+    return NextResponse.json(users.map((candidate) => ({
+      id: candidate.id,
+      name: candidate.name,
+      favoriteGenre: null,
+    })));
   } catch (error) {
     console.error("User search error:", error);
-    return NextResponse.json(
-      { error: "Failed to search users" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to search users" }, { status: 500 });
   }
 }

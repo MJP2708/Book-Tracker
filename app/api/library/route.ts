@@ -2,44 +2,48 @@ export const runtime = "nodejs";
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { ensureDefaultShelves, shelfNameFromStatus, statusFromShelfName } from "@/lib/shelf-utils";
 import { NextRequest, NextResponse } from "next/server";
 
-function toStatus(input: string) {
-  const normalized = input.trim().toLowerCase();
-  if (normalized === "reading" || normalized === "finished" || normalized === "unread") {
-    return normalized;
-  }
-  return "unread";
-}
-
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const session = await auth();
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    });
-
+    const user = await prisma.user.findUnique({ where: { email: session.user.email } });
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const { searchParams } = new URL(request.url);
-    const statusFilter = (searchParams.get("status") || "").trim().toLowerCase();
+    await ensureDefaultShelves(user.id);
 
-    const books = await prisma.userBook.findMany({
-      where: {
-        userId: user.id,
-        ...(statusFilter ? { status: statusFilter } : {}),
+    const entries = await prisma.userBook.findMany({
+      where: { userId: user.id },
+      include: {
+        book: true,
+        shelf: true,
       },
-      include: { book: true },
       orderBy: { updatedAt: "desc" },
     });
 
-    return NextResponse.json(books);
+    return NextResponse.json(
+      entries.map((entry) => ({
+        id: entry.id,
+        status: statusFromShelfName(entry.shelf.name),
+        pagesRead: entry.pagesRead,
+        totalPages: entry.book.totalPages,
+        tags: entry.tags,
+        book: {
+          id: entry.book.id,
+          title: entry.book.title,
+          author: entry.book.author,
+          coverImage: entry.book.coverUrl,
+          description: entry.book.description,
+        },
+      }))
+    );
   } catch (error) {
     console.error("Library fetch error:", error);
     return NextResponse.json({ error: "Failed to fetch library" }, { status: 500 });
@@ -53,52 +57,71 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    });
-
+    const user = await prisma.user.findUnique({ where: { email: session.user.email } });
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const { bookId, status, rating, review, pagesRead, totalPages, notes, tags } = await request.json();
+    const shelves = await ensureDefaultShelves(user.id);
+    const { bookId, status, pagesRead, notes, tags } = await request.json();
 
     if (!bookId || typeof bookId !== "string") {
       return NextResponse.json({ error: "bookId is required" }, { status: 400 });
     }
 
-    const userBook = await prisma.userBook.upsert({
-      where: { userId_bookId: { userId: user.id, bookId } },
+    const shelfName = shelfNameFromStatus(typeof status === "string" ? status : null);
+    const targetShelf = Object.values(shelves).find((shelf) => shelf?.name === shelfName);
+
+    if (!targetShelf) {
+      return NextResponse.json({ error: "Target shelf not found" }, { status: 500 });
+    }
+
+    const entry = await prisma.userBook.upsert({
+      where: {
+        userId_bookId: {
+          userId: user.id,
+          bookId,
+        },
+      },
       update: {
-        status: status ? toStatus(String(status)) : undefined,
-        rating: Number.isFinite(Number(rating)) ? Number(rating) : undefined,
-        review: typeof review === "string" ? review : undefined,
+        shelfId: targetShelf.id,
         pagesRead: Number.isFinite(Number(pagesRead)) ? Number(pagesRead) : undefined,
-        totalPages: Number.isFinite(Number(totalPages)) ? Number(totalPages) : undefined,
         notes: typeof notes === "string" ? notes : undefined,
-        tags: Array.isArray(tags)
-          ? tags.map((entry) => String(entry).trim()).filter((entry) => entry.length > 0)
-          : undefined,
+        tags: Array.isArray(tags) ? tags.map((tag) => String(tag).trim().toLowerCase()).filter(Boolean) : undefined,
       },
       create: {
         userId: user.id,
         bookId,
-        status: toStatus(String(status || "unread")),
-        rating: Number.isFinite(Number(rating)) ? Number(rating) : null,
-        review: typeof review === "string" ? review : null,
+        shelfId: targetShelf.id,
         pagesRead: Number.isFinite(Number(pagesRead)) ? Number(pagesRead) : 0,
-        totalPages: Number.isFinite(Number(totalPages)) ? Number(totalPages) : null,
         notes: typeof notes === "string" ? notes : null,
-        tags: Array.isArray(tags)
-          ? tags.map((entry) => String(entry).trim()).filter((entry) => entry.length > 0)
-          : [],
+        tags: Array.isArray(tags) ? tags.map((tag) => String(tag).trim().toLowerCase()).filter(Boolean) : [],
       },
-      include: { book: true },
+      include: {
+        book: true,
+        shelf: true,
+      },
     });
 
-    return NextResponse.json(userBook, { status: 201 });
+    return NextResponse.json(
+      {
+        id: entry.id,
+        status: statusFromShelfName(entry.shelf.name),
+        pagesRead: entry.pagesRead,
+        totalPages: entry.book.totalPages,
+        tags: entry.tags,
+        book: {
+          id: entry.book.id,
+          title: entry.book.title,
+          author: entry.book.author,
+          coverImage: entry.book.coverUrl,
+          description: entry.book.description,
+        },
+      },
+      { status: 201 }
+    );
   } catch (error) {
     console.error("Add to library error:", error);
-    return NextResponse.json({ error: "Failed to add book to library" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to add book" }, { status: 500 });
   }
 }

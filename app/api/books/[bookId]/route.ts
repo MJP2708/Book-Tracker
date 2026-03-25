@@ -2,23 +2,8 @@ export const runtime = "nodejs";
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { ensureDefaultShelves, shelfNameFromStatus, statusFromShelfName } from "@/lib/shelf-utils";
 import { NextRequest, NextResponse } from "next/server";
-
-function parseNotes(raw: string | null) {
-  if (!raw) {
-    return { note: "", highlights: [] as string[] };
-  }
-
-  try {
-    const parsed = JSON.parse(raw) as { note?: string; highlights?: string[] };
-    return {
-      note: parsed.note || "",
-      highlights: Array.isArray(parsed.highlights) ? parsed.highlights : [],
-    };
-  } catch {
-    return { note: raw, highlights: [] as string[] };
-  }
-}
 
 export async function GET(
   _request: NextRequest,
@@ -37,10 +22,13 @@ export async function GET(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    await ensureDefaultShelves(user.id);
+
     const [book, userBook] = await Promise.all([
       prisma.book.findUnique({ where: { id: bookId } }),
       prisma.userBook.findUnique({
         where: { userId_bookId: { userId: user.id, bookId } },
+        include: { shelf: true },
       }),
     ]);
 
@@ -48,23 +36,22 @@ export async function GET(
       return NextResponse.json({ error: "Book not found" }, { status: 404 });
     }
 
-    const parsed = parseNotes(userBook?.notes ?? null);
-
     return NextResponse.json({
-      ...book,
+      id: book.id,
+      title: book.title,
+      author: book.author,
+      coverImage: book.coverUrl,
+      description: book.description,
+      totalPages: book.totalPages,
       userBook: userBook
         ? {
             id: userBook.id,
-            status: userBook.status,
+            status: statusFromShelfName(userBook.shelf.name),
             pagesRead: userBook.pagesRead,
-            totalPages: userBook.totalPages,
-            progress: userBook.totalPages
-              ? Math.min(100, Math.round(((userBook.pagesRead || 0) / userBook.totalPages) * 100))
-              : 0,
-            note: parsed.note,
-            highlights: parsed.highlights,
-            tags: userBook.tags,
-            isPinned: userBook.isPinned,
+            totalPages: book.totalPages,
+            progress: userBook.progress,
+            note: userBook.notes || "",
+            highlights: userBook.highlights,
           }
         : null,
     });
@@ -91,39 +78,50 @@ export async function PATCH(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    const shelves = await ensureDefaultShelves(user.id);
+
     const body = await request.json();
-    const note = String(body.note || "");
+    const status = typeof body.status === "string" ? body.status : "unread";
+    const pagesRead = Number.isFinite(Number(body.pagesRead)) ? Number(body.pagesRead) : 0;
+    const totalPages = Number.isFinite(Number(body.totalPages)) ? Number(body.totalPages) : null;
+    const note = typeof body.note === "string" ? body.note : "";
     const highlights = Array.isArray(body.highlights)
-      ? body.highlights
-          .map((entry: unknown) => String(entry).trim())
-          .filter((entry: string) => entry.length > 0)
+      ? body.highlights.map((entry: unknown) => String(entry).trim()).filter(Boolean)
       : [];
 
-    const status = String(body.status || "unread");
-    const pagesRead = Number.isFinite(Number(body.pagesRead)) ? Number(body.pagesRead) : 0;
-    const totalPages = Number.isFinite(Number(body.totalPages))
-      ? Number(body.totalPages)
-      : body.totalPages === null
-      ? null
-      : undefined;
+    const shelfName = shelfNameFromStatus(status);
+    const targetShelf = Object.values(shelves).find((shelf) => shelf?.name === shelfName);
+
+    if (!targetShelf) {
+      return NextResponse.json({ error: "Target shelf not found" }, { status: 500 });
+    }
+
+    if (totalPages !== null) {
+      await prisma.book.update({
+        where: { id: bookId },
+        data: { totalPages },
+      });
+    }
+
+    const progress = totalPages && totalPages > 0 ? Math.min(100, Math.round((pagesRead / totalPages) * 100)) : 0;
 
     const userBook = await prisma.userBook.upsert({
       where: { userId_bookId: { userId: user.id, bookId } },
       update: {
-        status,
+        shelfId: targetShelf.id,
         pagesRead,
-        ...(typeof totalPages === "number" || totalPages === null
-          ? { totalPages }
-          : {}),
-        notes: JSON.stringify({ note, highlights }),
+        notes: note,
+        highlights,
+        progress,
       },
       create: {
         userId: user.id,
         bookId,
-        status,
+        shelfId: targetShelf.id,
         pagesRead,
-        totalPages: typeof totalPages === "number" ? totalPages : null,
-        notes: JSON.stringify({ note, highlights }),
+        notes: note,
+        highlights,
+        progress,
       },
     });
 

@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { ensureDefaultShelves } from "@/lib/shelf-utils";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET() {
@@ -14,7 +15,6 @@ export async function GET() {
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
       include: {
-        readingStats: true,
         _count: {
           select: {
             followers: true,
@@ -29,19 +29,33 @@ export async function GET() {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    await ensureDefaultShelves(user.id);
+
+    const [booksRead, pageAgg] = await Promise.all([
+      prisma.userBook.count({
+        where: {
+          userId: user.id,
+          shelf: { name: "Completed" },
+        },
+      }),
+      prisma.userBook.aggregate({
+        where: { userId: user.id },
+        _sum: { pagesRead: true },
+      }),
+    ]);
+
     return NextResponse.json({
       user: {
         id: user.id,
         name: user.name,
         email: user.email,
-        bio: user.bio,
+        bio: null,
         createdAt: user.createdAt,
       },
       stats: {
-        booksRead: user.readingStats?.booksRead ?? 0,
-        totalPages: user.readingStats?.totalPages ?? 0,
-        readingStreak: user.readingStats?.readingStreak ?? 0,
-        favoriteGenre: user.readingStats?.favoriteGenre ?? null,
+        booksRead,
+        totalPages: pageAgg._sum.pagesRead || 0,
+        readingStreak: 0,
       },
       counts: {
         followers: user._count.followers,
@@ -51,10 +65,7 @@ export async function GET() {
     });
   } catch (error) {
     console.error("Profile fetch error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch profile" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to fetch profile" }, { status: 500 });
   }
 }
 
@@ -65,13 +76,15 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { bio } = await request.json();
+    const { name, image } = (await request.json()) as { name?: string; image?: string };
 
     const user = await prisma.user.update({
       where: { email: session.user.email },
-      data: { bio: typeof bio === "string" ? bio : null },
+      data: {
+        ...(typeof name === "string" ? { name } : {}),
+        ...(typeof image === "string" ? { image } : {}),
+      },
       include: {
-        readingStats: true,
         _count: {
           select: {
             followers: true,
@@ -82,19 +95,31 @@ export async function PATCH(request: NextRequest) {
       },
     });
 
+    const [booksRead, pageAgg] = await Promise.all([
+      prisma.userBook.count({
+        where: {
+          userId: user.id,
+          shelf: { name: "Completed" },
+        },
+      }),
+      prisma.userBook.aggregate({
+        where: { userId: user.id },
+        _sum: { pagesRead: true },
+      }),
+    ]);
+
     return NextResponse.json({
       user: {
         id: user.id,
         name: user.name,
         email: user.email,
-        bio: user.bio,
+        bio: null,
         createdAt: user.createdAt,
       },
       stats: {
-        booksRead: user.readingStats?.booksRead ?? 0,
-        totalPages: user.readingStats?.totalPages ?? 0,
-        readingStreak: user.readingStats?.readingStreak ?? 0,
-        favoriteGenre: user.readingStats?.favoriteGenre ?? null,
+        booksRead,
+        totalPages: pageAgg._sum.pagesRead || 0,
+        readingStreak: 0,
       },
       counts: {
         followers: user._count.followers,
@@ -104,9 +129,6 @@ export async function PATCH(request: NextRequest) {
     });
   } catch (error) {
     console.error("Profile update error:", error);
-    return NextResponse.json(
-      { error: "Failed to update profile" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to update profile" }, { status: 500 });
   }
 }

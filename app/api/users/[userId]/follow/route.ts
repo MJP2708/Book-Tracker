@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(
-  request: NextRequest,
+  _request: NextRequest,
   context: { params: Promise<{ userId: string }> }
 ) {
   try {
@@ -14,18 +14,18 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    });
-
+    const user = await prisma.user.findUnique({ where: { email: session.user.email } });
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
     const { userId: userIdToFollow } = await context.params;
 
-    // Check if already following
-    const existing = await prisma.follows.findUnique({
+    if (user.id === userIdToFollow) {
+      return NextResponse.json({ error: "Cannot follow yourself" }, { status: 400 });
+    }
+
+    const existing = await prisma.follow.findUnique({
       where: {
         followerId_followingId: {
           followerId: user.id,
@@ -37,12 +37,10 @@ export async function POST(
     let isFollowing = false;
 
     if (existing) {
-      await prisma.follows.delete({
-        where: { id: existing.id },
-      });
+      await prisma.follow.delete({ where: { id: existing.id } });
       isFollowing = false;
     } else {
-      await prisma.follows.create({
+      await prisma.follow.create({
         data: {
           followerId: user.id,
           followingId: userIdToFollow,
@@ -54,9 +52,6 @@ export async function POST(
     return NextResponse.json({ isFollowing }, { status: 200 });
   } catch (error) {
     console.error("Follow toggle error:", error);
-    return NextResponse.json(
-      { error: "Failed to toggle follow" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to toggle follow" }, { status: 500 });
   }
 }
