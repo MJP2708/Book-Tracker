@@ -1,26 +1,22 @@
-import { Playfair_Display, Inter } from "next/font/google";
+import { Space_Grotesk, Plus_Jakarta_Sans } from "next/font/google";
 import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "@/lib/providers";
 
-const playfair = Playfair_Display({
+const display = Space_Grotesk({
   subsets: ["latin"],
-  variable: "--font-playfair",
+  variable: "--font-display",
 });
 
-const inter = Inter({
+const body = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  variable: "--font-inter",
+  variable: "--font-body",
 });
 
 export const metadata: Metadata = {
-  title: "Bookshelf - Your Social Reading Platform",
-  description: "Connect with readers, share books, track progress, and discover your next favorite read.",
-  icons: {
-    icon: [
-      { url: "/icon.png", sizes: "any" },
-    ],
-  },
+  title: "Bookshelf - The Netflix of Knowledge",
+  description:
+    "Personalized learning and book tracking for students who want structure, momentum, and better reading habits.",
 };
 
 export default function RootLayout({
@@ -31,7 +27,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${playfair.variable} ${inter.variable} bg-amber-50 text-slate-900 antialiased transition-colors duration-300 dark:bg-slate-900 dark:text-amber-50`}
+        className={`${display.variable} ${body.variable} bg-zinc-50 text-zinc-900 antialiased transition-colors duration-200 dark:bg-zinc-950 dark:text-zinc-50`}
       >
         <Providers>{children}</Providers>
       </body>

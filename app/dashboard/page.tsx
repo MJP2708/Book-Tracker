@@ -1,228 +1,135 @@
 "use client";
 
 import { Navigation } from "@/components/Navigation";
-import { CreatePostForm } from "@/components/feed/CreatePostForm";
-import { PostCard } from "@/components/feed/PostCard";
-import { BookX, UserPlus, Users } from "lucide-react";
+import { discoveryCategories } from "@/lib/mock-data";
+import { BookOpen, Flame, Target, Plus, Sparkles } from "lucide-react";
 import { useSession } from "next-auth/react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-type FeedPost = {
-  id: string;
-  type: "post" | "repost" | "quote" | "progress_update";
-  content?: string | null;
-  createdAt: string;
-  user: { id: string; name: string | null; avatar?: string | null };
-  book?: { title: string; author: string | null; coverImage?: string | null } | null;
-  _count: { likes: number; comments: number };
+type DashboardStats = {
+  booksRead: number;
+  totalPages: number;
+  readingStreak: number;
 };
 
-type UserBook = {
+type LibraryEntry = {
   id: string;
-  status: string;
-  rating?: number | null;
-  pagesRead?: number | null;
-  totalPages?: number | null;
+  status: "unread" | "reading" | "finished";
+  pagesRead: number | null;
+  totalPages: number | null;
   book: {
+    id: string;
     title: string;
-    author?: string | null;
+    author: string | null;
+    coverImage: string | null;
+    description: string | null;
   };
 };
 
-type SuggestionsUser = {
+type SearchBook = {
   id: string;
-  name: string | null;
-  favoriteGenre?: string | null;
-};
-
-type FriendRequest = {
-  id: string;
-  sender: { id: string; name: string | null };
-  createdAt: string;
+  title: string;
+  author: string | null;
+  coverImage: string | null;
+  description: string | null;
 };
 
 export default function DashboardPage() {
-  const [addedFriends, setAddedFriends] = useState<Record<string, boolean>>({});
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
-  const [posts, setPosts] = useState<FeedPost[]>([]);
-  const [recentBooks, setRecentBooks] = useState<UserBook[]>([]);
-  const [suggestedFriends, setSuggestedFriends] = useState<SuggestionsUser[]>(
-    []
-  );
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<SuggestionsUser[]>([]);
-  const [searchLoading, setSearchLoading] = useState(false);
-  const [searchError, setSearchError] = useState<string | null>(null);
-  const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
-  const [stats, setStats] = useState({
-    booksRead: 0,
-    totalPages: 0,
-    readingStreak: 0,
-  });
-  const [isLoading, setIsLoading] = useState(true);
-  const currentlyReading = recentBooks.filter(
-    (book) => book.status === "reading"
-  );
+
+  const [stats, setStats] = useState<DashboardStats>({ booksRead: 0, totalPages: 0, readingStreak: 0 });
+  const [library, setLibrary] = useState<LibraryEntry[]>([]);
+  const [search, setSearch] = useState("");
+  const [searchResults, setSearchResults] = useState<SearchBook[]>([]);
+  const [busyLabel, setBusyLabel] = useState<string | null>(null);
 
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/auth/login");
-      return;
-    }
-    if (status === "authenticated") {
-      void loadDashboard();
     }
   }, [status, router]);
 
-  const loadDashboard = async () => {
-    setIsLoading(true);
-    try {
-      const [postsRes, booksRes, meRes, suggestionsRes, requestsRes] =
-        await Promise.all([
-        fetch("/api/posts?limit=3"),
-        fetch("/api/library"),
-        fetch("/api/me"),
-        fetch("/api/users/suggestions"),
-        fetch("/api/friends/requests"),
-      ]);
+  useEffect(() => {
+    if (status !== "authenticated") return;
 
-      if (postsRes.ok) {
-        const postData = (await postsRes.json()) as FeedPost[];
-        setPosts(postData);
-      }
-
-      if (booksRes.ok) {
-        const bookData = (await booksRes.json()) as UserBook[];
-        setRecentBooks(bookData);
-      }
+    const run = async () => {
+      const [meRes, libraryRes] = await Promise.all([fetch("/api/me"), fetch("/api/library")]);
 
       if (meRes.ok) {
-        const meData = (await meRes.json()) as {
-          stats: { booksRead: number; totalPages: number; readingStreak: number };
-        };
-        setStats(meData.stats);
+        const me = (await meRes.json()) as { stats: DashboardStats };
+        setStats(me.stats);
       }
-
-      if (suggestionsRes.ok) {
-        const suggestionData = (await suggestionsRes.json()) as SuggestionsUser[];
-        setSuggestedFriends(suggestionData);
+      if (libraryRes.ok) {
+        const entries = (await libraryRes.json()) as LibraryEntry[];
+        setLibrary(entries);
       }
-
-      if (requestsRes.ok) {
-        const requestData = (await requestsRes.json()) as FriendRequest[];
-        setFriendRequests(requestData);
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleCreatePost = async (data: { type: string; content: string }) => {
-    const payload = {
-      type: data.type === "progress" ? "progress_update" : data.type,
-      content: data.content,
     };
-    const response = await fetch("/api/posts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    if (!response.ok) {
-      throw new Error("Failed to create post.");
-    }
-    const created = (await response.json()) as FeedPost;
-    setPosts((prev) => [created, ...prev].slice(0, 3));
-  };
 
-  const handleToggleLike = async (postId: string) => {
-    const response = await fetch(`/api/posts/${postId}/like`, { method: "POST" });
-    if (!response.ok) {
-      return;
-    }
-    const data = (await response.json()) as { likeCount: number };
-    setPosts((prev) =>
-      prev.map((post) =>
-        post.id === postId
-          ? { ...post, _count: { ...post._count, likes: data.likeCount } }
-          : post
-      )
-    );
-  };
+    void run();
+  }, [status]);
 
-  const handleDeletePost = async (postId: string) => {
-    const response = await fetch(`/api/posts/${postId}`, { method: "DELETE" });
-    if (!response.ok) {
-      return;
-    }
-    setPosts((prev) => prev.filter((post) => post.id !== postId));
-  };
+  useEffect(() => {
+    if (!search.trim()) return;
 
-  const handleSendRequest = async (userId: string) => {
-    const response = await fetch("/api/friends/requests", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId }),
-    });
-    if (!response.ok) {
-      return;
-    }
-    setAddedFriends((prev) => ({ ...prev, [userId]: true }));
-  };
-
-  const handleAcceptRequest = async (requestId: string) => {
-    const response = await fetch(
-      `/api/friends/requests/${requestId}/accept`,
-      { method: "POST" }
-    );
-    if (!response.ok) {
-      return;
-    }
-    setFriendRequests((prev) =>
-      prev.filter((request) => request.id !== requestId)
-    );
-  };
-
-  const handleDeclineRequest = async (requestId: string) => {
-    const response = await fetch(
-      `/api/friends/requests/${requestId}/decline`,
-      { method: "POST" }
-    );
-    if (!response.ok) {
-      return;
-    }
-    setFriendRequests((prev) =>
-      prev.filter((request) => request.id !== requestId)
-    );
-  };
-
-  const handleSearch = async (event: React.FormEvent) => {
-    event.preventDefault();
-    const query = searchQuery.trim();
-    if (!query) {
-      setSearchResults([]);
-      setSearchError(null);
-      return;
-    }
-    setSearchLoading(true);
-    setSearchError(null);
-    try {
-      const response = await fetch(
-        `/api/users/search?query=${encodeURIComponent(query)}`
-      );
-      if (!response.ok) {
-        throw new Error("Failed to search users.");
+    const timer = setTimeout(async () => {
+      const res = await fetch(`/api/books?query=${encodeURIComponent(search.trim())}`);
+      if (res.ok) {
+        setSearchResults((await res.json()) as SearchBook[]);
       }
-      const results = (await response.json()) as SuggestionsUser[];
-      setSearchResults(results);
-    } catch (err) {
-      setSearchError(
-        err instanceof Error ? err.message : "Failed to search users."
-      );
-    } finally {
-      setSearchLoading(false);
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const currentlyReading = useMemo(
+    () => library.filter((entry) => entry.status === "reading").slice(0, 4),
+    [library]
+  );
+
+  const addExistingBook = async (bookId: string, statusValue: "unread" | "reading" | "finished" = "unread") => {
+    setBusyLabel(bookId);
+    const res = await fetch("/api/library", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ bookId, status: statusValue }),
+    });
+
+    if (res.ok) {
+      const updated = (await fetch("/api/library").then((r) => r.json())) as LibraryEntry[];
+      setLibrary(updated);
     }
+    setBusyLabel(null);
+  };
+
+  const addSuggested = async (book: {
+    title: string;
+    author: string;
+    description: string;
+    coverUrl: string;
+  }) => {
+    setBusyLabel(book.title);
+    const createRes = await fetch("/api/books", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: book.title,
+        author: book.author,
+        description: book.description,
+        coverImage: book.coverUrl,
+      }),
+    });
+
+    if (!createRes.ok) {
+      setBusyLabel(null);
+      return;
+    }
+
+    const created = (await createRes.json()) as { id: string };
+    await addExistingBook(created.id, "unread");
+    setBusyLabel(null);
   };
 
   if (status === "loading") {
@@ -232,313 +139,139 @@ export default function DashboardPage() {
   return (
     <>
       <Navigation />
-      <main className="min-h-screen bg-amber-50 dark:bg-slate-900">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="font-serif-title text-amber-900 dark:text-amber-50 mb-2">
-              Welcome Back!
-            </h1>
-            <p className="text-slate-600 dark:text-slate-400">
-              Track your reading, connect with other book lovers, and discover
-              your next favorite read.
-            </p>
-          </div>
+      <main className="page-shell">
+        <div className="mx-auto w-full max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
+          <section className="grid gap-4 md:grid-cols-3">
+            <div className="glass-card">
+              <p className="text-sm text-zinc-500">Total books read</p>
+              <p className="display-title mt-2 text-3xl">{stats.booksRead}</p>
+            </div>
+            <div className="glass-card">
+              <p className="text-sm text-zinc-500">Pages read</p>
+              <p className="display-title mt-2 text-3xl">{stats.totalPages}</p>
+            </div>
+            <div className="glass-card">
+              <p className="text-sm text-zinc-500">Reading streak</p>
+              <p className="display-title mt-2 text-3xl">{stats.readingStreak} days</p>
+            </div>
+          </section>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Main Content */}
-            <div className="lg:col-span-2 space-y-6">
-              {/* Create Post */}
-              <CreatePostForm onPost={handleCreatePost} />
-
-              {/* Sample Posts */}
-              <div className="space-y-4">
-                {isLoading ? (
-                  <div className="card-bookish">Loading your updates...</div>
-                ) : posts.length === 0 ? (
-                  <div className="card-bookish">
-                    No posts yet. Share your first update to start the
-                    conversation.
-                  </div>
-                ) : (
-                  posts.map((post) => (
-                    <PostCard
-                      key={post.id}
-                      id={post.id}
-                      author={{
-                        id: post.user.id,
-                        name: post.user.name ?? "Reader",
-                        avatar: post.user.avatar ?? undefined,
-                      }}
-                      type={post.type}
-                      book={
-                        post.book
-                          ? {
-                              title: post.book.title,
-                              author: post.book.author ?? "Unknown",
-                              coverImage: post.book.coverImage ?? undefined,
-                            }
-                          : undefined
-                      }
-                      content={post.content ?? undefined}
-                      createdAt={post.createdAt}
-                      likes={post._count.likes}
-                      comments={post._count.comments}
-                      onLike={() => handleToggleLike(post.id)}
-                      currentUserId={session?.user?.id}
-                      onDelete={() => handleDeletePost(post.id)}
-                    />
-                  ))
-                )}
+          <section className="glass-card">
+            <div className="mb-4 flex items-center justify-between gap-2">
+              <div>
+                <p className="display-title text-2xl">Your current sprint</p>
+                <p className="text-sm text-zinc-500">Pick one book and move it forward today.</p>
               </div>
+              <Link href="/bookshelf" className="primary-btn">
+                Open Bookshelf
+              </Link>
             </div>
 
-            {/* Sidebar */}
-            <div className="lg:col-span-1">
-              {/* Add Friends */}
-              <div className="card-bookish mb-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-serif-subtitle text-slate-900 dark:text-amber-50">
-                    Add Friends
-                  </h3>
-                  <span className="badge">New</span>
-                </div>
-                <div className="flex items-center gap-2 mb-4">
-                  <Users className="w-5 h-5 text-amber-600 dark:text-amber-300" />
-                  <p className="text-sm text-slate-600 dark:text-slate-400">
-                    Grow your circle and share shelves.
-                  </p>
-                </div>
-                <form onSubmit={handleSearch} className="space-y-3 mb-4">
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <input
-                      type="text"
-                      placeholder="Find friends by username"
-                      value={searchQuery}
-                      onChange={(event) => setSearchQuery(event.target.value)}
-                      className="w-full rounded-lg border border-amber-200 bg-white px-4 py-2 text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-400 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100"
-                    />
-                    <button
-                      type="submit"
-                      className="btn-primary w-full sm:w-auto"
-                      disabled={searchLoading}
+            {currentlyReading.length === 0 ? (
+              <p className="text-sm text-zinc-500">No active book yet. Add one from a recommendation below.</p>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {currentlyReading.map((entry) => {
+                  const progress = entry.totalPages
+                    ? Math.min(100, Math.round(((entry.pagesRead || 0) / entry.totalPages) * 100))
+                    : 0;
+
+                  return (
+                    <Link
+                      key={entry.id}
+                      href={`/books/${entry.book.id}`}
+                      className="rounded-xl border border-zinc-200 bg-white p-4 transition hover:-translate-y-0.5 dark:border-zinc-800 dark:bg-zinc-900"
                     >
-                      {searchLoading ? "Searching..." : "Find"}
+                      <p className="font-semibold">{entry.book.title}</p>
+                      <p className="text-xs text-zinc-500">{entry.book.author || "Unknown"}</p>
+                      <div className="mt-3 h-2 rounded-full bg-zinc-200 dark:bg-zinc-700">
+                        <div className="h-full rounded-full bg-cyan-500" style={{ width: `${progress}%` }} />
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
+          <section className="glass-card space-y-4">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-cyan-500" />
+              <p className="display-title text-xl">Quick Discover</p>
+            </div>
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search books by title or author"
+              className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm outline-none ring-cyan-400 placeholder:text-zinc-400 focus:ring-2 dark:border-zinc-700 dark:bg-zinc-900"
+            />
+            {search.trim().length > 0 && searchResults.length > 0 && (
+              <div className="grid gap-2 sm:grid-cols-2">
+                {searchResults.slice(0, 6).map((book) => (
+                  <div
+                    key={book.id}
+                    className="flex items-center justify-between rounded-xl border border-zinc-200 bg-white p-3 text-sm dark:border-zinc-800 dark:bg-zinc-900"
+                  >
+                    <div>
+                      <p className="font-semibold">{book.title}</p>
+                      <p className="text-zinc-500">{book.author || "Unknown"}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => void addExistingBook(book.id)}
+                      className="secondary-btn"
+                      disabled={busyLabel === book.id}
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add
                     </button>
                   </div>
-                  {searchError && (
-                    <p className="text-xs text-red-600 dark:text-red-400">
-                      {searchError}
-                    </p>
-                  )}
-                </form>
-                {searchResults.length > 0 && (
-                  <div className="space-y-3 mb-4">
-                    {searchResults.map((friend) => (
-                      <div
-                        key={friend.id}
-                        className="flex items-center justify-between gap-3 rounded-lg border border-amber-100 dark:border-slate-700 p-3"
-                      >
-                        <div className="min-w-0">
-                          <p className="font-medium text-slate-900 dark:text-amber-50 truncate">
-                            {friend.name ?? "Reader"}
-                          </p>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">
-                            {friend.favoriteGenre ?? "Book lover"}
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          className={`btn-secondary px-3 py-2 text-sm gap-1 ${
-                            addedFriends[friend.id]
-                              ? "cursor-default opacity-80"
-                              : ""
-                          }`}
-                          onClick={() => handleSendRequest(friend.id)}
-                          disabled={addedFriends[friend.id]}
-                        >
-                          <UserPlus className="w-4 h-4" />
-                          {addedFriends[friend.id] ? "Sent" : "Add"}
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {!searchLoading &&
-                  searchQuery.trim().length > 0 &&
-                  searchResults.length === 0 &&
-                  !searchError && (
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-                      No users found for "{searchQuery.trim()}".
-                    </p>
-                  )}
-                <div className="space-y-3">
-                  {suggestedFriends.length === 0 ? (
-                    <p className="text-sm text-slate-500 dark:text-slate-400">
-                      No suggestions yet. Invite friends to join you.
-                    </p>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {discoveryCategories.map((category) => (
+            <section key={category.key} className="glass-card">
+              <div className="mb-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {category.key === "trending" ? (
+                    <Flame className="h-5 w-5 text-orange-500" />
+                  ) : category.key === "recommended" ? (
+                    <BookOpen className="h-5 w-5 text-cyan-500" />
                   ) : (
-                    suggestedFriends.map((friend) => (
-                      <div
-                        key={friend.id}
-                        className="flex items-center justify-between gap-3 rounded-lg border border-amber-100 dark:border-slate-700 p-3"
-                      >
-                        <div className="min-w-0">
-                          <p className="font-medium text-slate-900 dark:text-amber-50 truncate">
-                            {friend.name ?? "Reader"}
-                          </p>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">
-                            {friend.favoriteGenre ?? "Book lover"}
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          className={`btn-secondary px-3 py-2 text-sm gap-1 ${
-                            addedFriends[friend.id]
-                              ? "cursor-default opacity-80"
-                              : ""
-                          }`}
-                          onClick={() => handleSendRequest(friend.id)}
-                          disabled={addedFriends[friend.id]}
-                        >
-                          <UserPlus className="w-4 h-4" />
-                          {addedFriends[friend.id] ? "Sent" : "Add"}
-                        </button>
-                      </div>
-                    ))
+                    <Target className="h-5 w-5 text-emerald-500" />
                   )}
+                  <p className="display-title text-xl">{category.title}</p>
                 </div>
               </div>
 
-              <div className="card-bookish mb-6">
-                <h3 className="font-serif-subtitle text-slate-900 dark:text-amber-50 mb-4">
-                  Friend Requests
-                </h3>
-                {friendRequests.length === 0 ? (
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
-                    No new requests.
-                  </p>
-                ) : (
-                  <div className="space-y-3">
-                    {friendRequests.map((request) => (
-                      <div
-                        key={request.id}
-                        className="flex items-center justify-between gap-3 rounded-lg border border-amber-100 dark:border-slate-700 p-3"
-                      >
-                        <div className="min-w-0">
-                          <p className="font-medium text-slate-900 dark:text-amber-50 truncate">
-                            {request.sender.name ?? "Reader"}
-                          </p>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">
-                            Wants to connect
-                          </p>
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            className="btn-primary px-3 py-2 text-sm"
-                            onClick={() => handleAcceptRequest(request.id)}
-                          >
-                            Accept
-                          </button>
-                          <button
-                            type="button"
-                            className="btn-secondary px-3 py-2 text-sm"
-                            onClick={() => handleDeclineRequest(request.id)}
-                          >
-                            Decline
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+              <div className="scroll-row">
+                {category.books.map((book) => (
+                  <article
+                    key={`${category.key}-${book.title}`}
+                    className="min-w-[220px] rounded-xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900"
+                  >
+                    <div
+                      className="mb-3 h-32 rounded-lg bg-cover bg-center"
+                      style={{ backgroundImage: `url(${book.coverUrl})` }}
+                    />
+                    <p className="font-semibold">{book.title}</p>
+                    <p className="text-xs text-zinc-500">{book.author}</p>
+                    <p className="mt-2 line-clamp-2 text-xs text-zinc-600 dark:text-zinc-300">{book.description}</p>
+                    <button
+                      type="button"
+                      onClick={() => void addSuggested(book)}
+                      className="primary-btn mt-3 w-full"
+                      disabled={busyLabel === book.title}
+                    >
+                      {busyLabel === book.title ? "Adding..." : "Add to shelf"}
+                    </button>
+                  </article>
+                ))}
               </div>
-
-              {/* Reading Goals */}
-              <div className="card-bookish mb-6">
-                <h3 className="font-serif-subtitle text-slate-900 dark:text-amber-50 mb-4">
-                  Currently Reading
-                </h3>
-                <div className="space-y-4">
-                  {currentlyReading.length > 0 ? (
-                    currentlyReading.map((book) => (
-                      <div
-                        key={book.id}
-                        className="pb-4 border-b border-slate-200 dark:border-slate-700 last:border-b-0"
-                      >
-                        <h4 className="font-semibold text-slate-900 dark:text-amber-50 line-clamp-1">
-                          {book.book.title}
-                        </h4>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">
-                          {book.book.author ?? "Unknown"}
-                        </p>
-                        {book.status === "reading" && (
-                          <>
-                            <p className="text-xs text-slate-500 dark:text-slate-500 mt-2">
-                              {book.pagesRead} / {book.totalPages} pages
-                            </p>
-                            <div className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden mt-2">
-                              <div
-                                className="h-full bg-gradient-to-r from-amber-400 to-orange-400"
-                                style={{
-                                  width: `${
-                                    ((book.pagesRead || 0) /
-                                      (book.totalPages || 1)) *
-                                    100
-                                  }%`,
-                                }}
-                              />
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-6">
-                      <BookX className="w-8 h-8 mx-auto text-slate-400 mb-2" />
-                      <p className="text-sm text-slate-500">
-                        No books currently reading. Start one now!
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Statistics */}
-              <div className="card-bookish">
-                <h3 className="font-serif-subtitle text-slate-900 dark:text-amber-50 mb-4">
-                  Your Stats
-                </h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-600 dark:text-slate-400">
-                      Books Read
-                    </span>
-                    <span className="font-semibold text-slate-900 dark:text-amber-50">
-                      {stats.booksRead}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-600 dark:text-slate-400">
-                      Pages This Year
-                    </span>
-                    <span className="font-semibold text-slate-900 dark:text-amber-50">
-                      {stats.totalPages}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-600 dark:text-slate-400">
-                      Reading Streak
-                    </span>
-                    <span className="font-semibold text-slate-900 dark:text-amber-50">
-                      {stats.readingStreak} days
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+            </section>
+          ))}
         </div>
       </main>
     </>

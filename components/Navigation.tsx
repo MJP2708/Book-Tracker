@@ -2,148 +2,104 @@
 
 import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
-import { BookOpen, Home, MessageCircle, Users, User, LogOut, Menu } from "lucide-react";
+import { BookOpen, LayoutDashboard, Library, Route, User } from "lucide-react";
 import { useState } from "react";
+import { ThemeToggle } from "@/components/ThemeToggle";
+
+const signedInLinks = [
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/bookshelf", label: "Bookshelf", icon: Library },
+  { href: "/learning-paths", label: "Learning Paths", icon: Route },
+  { href: "/profile", label: "Profile", icon: User },
+];
 
 export function Navigation() {
   const { data: session } = useSession();
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <nav className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 paper-texture">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-2">
-            <BookOpen className="w-7 h-7 text-amber-600 dark:text-amber-500" />
-            <span className="font-serif-title text-amber-900 dark:text-amber-50">
-              Bookshelf
-            </span>
-          </Link>
-
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-8">
-            {session ? (
-              <>
-                <Link
-                  href="/dashboard"
-                  className="flex items-center gap-2 text-slate-700 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
-                >
-                  <Home className="w-5 h-5" />
-                  Dashboard
-                </Link>
-                <Link
-                  href="/library"
-                  className="flex items-center gap-2 text-slate-700 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
-                >
-                  <BookOpen className="w-5 h-5" />
-                  Library
-                </Link>
-                <Link
-                  href="/feed"
-                  className="flex items-center gap-2 text-slate-700 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
-                >
-                  <Users className="w-5 h-5" />
-                  Feed
-                </Link>
-                <Link
-                  href="/messages"
-                  className="flex items-center gap-2 text-slate-700 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
-                >
-                  <MessageCircle className="w-5 h-5" />
-                  Messages
-                </Link>
-                <Link
-                  href="/profile"
-                  className="flex items-center gap-2 text-slate-700 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
-                >
-                  <User className="w-5 h-5" />
-                  Profile
-                </Link>
-                <button
-                  onClick={() => signOut()}
-                  className="flex items-center gap-2 text-slate-700 dark:text-slate-300 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-                >
-                  <LogOut className="w-5 h-5" />
-                  Logout
-                </button>
-              </>
-            ) : (
-              <>
-                <Link href="/auth/login" className="btn-secondary">
-                  Sign In
-                </Link>
-                <Link href="/auth/signup" className="btn-primary">
-                  Join Now
-                </Link>
-              </>
-            )}
+    <header className="sticky top-0 z-40 border-b border-zinc-200/70 bg-zinc-50/85 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/85">
+      <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+        <Link href="/" className="flex items-center gap-2">
+          <div className="rounded-lg bg-cyan-500 p-2 text-white">
+            <BookOpen className="h-4 w-4" />
           </div>
-
-          {/* Mobile Menu Button */}
-          <button
-            onClick={() => setIsOpen(!isOpen)}
-            className="md:hidden p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
-          >
-            <Menu className="w-6 h-6" />
-          </button>
-        </div>
-
-        {/* Mobile Navigation */}
-        {isOpen && (
-          <div className="md:hidden border-t border-slate-200 dark:border-slate-800 py-4 space-y-2">
-            {session ? (
-              <>
-                <Link
-                  href="/dashboard"
-                  className="block px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
-                >
-                  Dashboard
-                </Link>
-                <Link
-                  href="/library"
-                  className="block px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
-                >
-                  Library
-                </Link>
-                <Link
-                  href="/feed"
-                  className="block px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
-                >
-                  Feed
-                </Link>
-                <Link
-                  href="/messages"
-                  className="block px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
-                >
-                  Messages
-                </Link>
-                <Link
-                  href="/profile"
-                  className="block px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
-                >
-                  Profile
-                </Link>
-                <button
-                  onClick={() => signOut()}
-                  className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-red-600"
-                >
-                  Logout
-                </button>
-              </>
-            ) : (
-              <div className="flex gap-2 px-4">
-                <Link href="/auth/login" className="btn-secondary flex-1">
-                  Sign In
-                </Link>
-                <Link href="/auth/signup" className="btn-primary flex-1">
-                  Join
-                </Link>
-              </div>
-            )}
+          <div>
+            <p className="display-title text-base leading-none">Bookshelf</p>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">The Netflix of Knowledge</p>
           </div>
-        )}
+        </Link>
+
+        <nav className="hidden items-center gap-2 md:flex">
+          {session ? (
+            <>
+              {signedInLinks.map((item) => (
+                <Link key={item.href} href={item.href} className="secondary-btn text-xs">
+                  <item.icon className="h-4 w-4" />
+                  {item.label}
+                </Link>
+              ))}
+              <ThemeToggle />
+              <button onClick={() => signOut()} className="secondary-btn text-xs">
+                Logout
+              </button>
+            </>
+          ) : (
+            <>
+              <ThemeToggle />
+              <Link href="/auth/login" className="secondary-btn text-xs">
+                Sign In
+              </Link>
+              <Link href="/auth/signup" className="primary-btn text-xs">
+                Get Started
+              </Link>
+            </>
+          )}
+        </nav>
+
+        <button
+          type="button"
+          onClick={() => setIsOpen((prev) => !prev)}
+          className="secondary-btn px-3 md:hidden"
+        >
+          Menu
+        </button>
       </div>
-    </nav>
+
+      {isOpen && (
+        <div className="space-y-2 border-t border-zinc-200 p-4 md:hidden dark:border-zinc-800">
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            {session ? (
+              <button onClick={() => signOut()} className="secondary-btn">
+                Logout
+              </button>
+            ) : null}
+          </div>
+          {session ? (
+            signedInLinks.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setIsOpen(false)}
+                className="secondary-btn w-full justify-start"
+              >
+                <item.icon className="h-4 w-4" />
+                {item.label}
+              </Link>
+            ))
+          ) : (
+            <>
+              <Link href="/auth/login" className="secondary-btn w-full justify-start">
+                Sign In
+              </Link>
+              <Link href="/auth/signup" className="primary-btn w-full justify-start">
+                Get Started
+              </Link>
+            </>
+          )}
+        </div>
+      )}
+    </header>
   );
 }
