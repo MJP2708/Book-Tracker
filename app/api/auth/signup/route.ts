@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 export async function POST() {
   return NextResponse.json(
     {
-      error: "Credentials signup is disabled. Use Google authentication.",
+      error: "Direct signup endpoint is disabled. Use /auth/signup.",
     },
     { status: 410 }
   );
