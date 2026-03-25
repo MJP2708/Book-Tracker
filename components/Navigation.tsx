@@ -4,7 +4,12 @@ import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
 import { BookOpen, LayoutDashboard, Library, Route, User } from "lucide-react";
 import { useState } from "react";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import dynamic from "next/dynamic";
+
+const ThemeToggle = dynamic(
+  () => import("@/components/ThemeToggle").then((mod) => mod.ThemeToggle),
+  { ssr: false }
+);
 
 const signedInLinks = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
