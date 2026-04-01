@@ -6,16 +6,24 @@ export default async function middleware(request: NextRequest) {
   const token = await getToken({ req: request, secret });
   const { pathname } = request.nextUrl;
 
-  const protectedRoutes = [
-    "/dashboard",
-    "/profile",
-    "/bookshelf",
-    "/books",
-    "/learning-paths",
-    "/library",
-  ];
-
-  const isProtected = protectedRoutes.some((route) => pathname.startsWith(route));
+  const isProtected =
+    pathname === "/dashboard" ||
+    pathname.startsWith("/dashboard/") ||
+    pathname === "/profile" ||
+    pathname === "/bookshelf" ||
+    pathname.startsWith("/bookshelf/") ||
+    pathname === "/learning-paths" ||
+    pathname.startsWith("/learning-paths/") ||
+    pathname === "/library" ||
+    pathname.startsWith("/library/") ||
+    pathname === "/feed" ||
+    pathname.startsWith("/feed/") ||
+    pathname === "/clubs" ||
+    pathname.startsWith("/clubs/") ||
+    pathname === "/discussions" ||
+    pathname.startsWith("/discussions/") ||
+    pathname === "/knowledge" ||
+    pathname.startsWith("/knowledge/");
 
   if (isProtected && !token) {
     const loginUrl = new URL("/auth/login", request.url);

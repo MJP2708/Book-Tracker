@@ -2,8 +2,9 @@
 
 import { Navigation } from "@/components/Navigation";
 import { Bookmark, Highlighter, Save, X } from "lucide-react";
+import Image from "next/image";
 import { useSession } from "next-auth/react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 type BookDetail = {
@@ -27,7 +28,6 @@ type BookDetail = {
 export default function BookDetailPage() {
   const { status } = useSession();
   const params = useParams<{ bookId: string }>();
-  const router = useRouter();
   const [book, setBook] = useState<BookDetail | null>(null);
   const [note, setNote] = useState("");
   const [highlightInput, setHighlightInput] = useState("");
@@ -37,13 +37,7 @@ export default function BookDetailPage() {
   const [shelf, setShelf] = useState<"unread" | "reading" | "finished">("unread");
 
   useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/auth/login");
-    }
-  }, [status, router]);
-
-  useEffect(() => {
-    if (status !== "authenticated" || !params?.bookId) return;
+    if (status === "loading" || !params?.bookId) return;
 
     const run = async () => {
       const response = await fetch(`/api/books/${params.bookId}`);
@@ -70,6 +64,10 @@ export default function BookDetailPage() {
 
   const saveChanges = async () => {
     if (!book) return;
+    if (status !== "authenticated") {
+      window.location.href = `/auth/login?from=/books/${book.id}`;
+      return;
+    }
 
     const response = await fetch(`/api/books/${book.id}`, {
       method: "PATCH",
@@ -100,12 +98,16 @@ export default function BookDetailPage() {
       <main className="page-shell">
         <div className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[280px_1fr] lg:px-8">
           <aside className="glass-card h-fit">
-            <div
-              className="mb-4 aspect-[3/4] rounded-xl bg-cover bg-center"
-              style={{
-                backgroundImage: `url(${book.coverImage || "https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=600&q=80"})`,
-              }}
-            />
+            <div className="relative mb-4 aspect-[3/4] overflow-hidden rounded-xl">
+              <Image
+                src={book.coverImage || "https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=600&q=80"}
+                alt={`${book.title} cover`}
+                fill
+                className="object-cover"
+                sizes="(max-width: 1024px) 100vw, 280px"
+                priority={false}
+              />
+            </div>
             <p className="display-title text-xl">{book.title}</p>
             <p className="text-sm text-zinc-500">{book.author || "Unknown"}</p>
             <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-300">{book.description || "No description yet."}</p>
@@ -208,6 +210,9 @@ export default function BookDetailPage() {
               <Save className="h-4 w-4" />
               Save updates
             </button>
+            {status !== "authenticated" && (
+              <p className="text-sm text-zinc-500">Sign in to track progress, save notes, and keep highlights.</p>
+            )}
           </section>
         </div>
       </main>

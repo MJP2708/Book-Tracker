@@ -1,0 +1,11 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="630" fill="#F6FBFF"/>
+  <rect x="58" y="54" width="1084" height="522" rx="32" fill="#0F172A"/>
+  <circle cx="973" cy="157" r="109" fill="#06B6D4" fill-opacity="0.22"/>
+  <circle cx="236" cy="480" r="148" fill="#F59E0B" fill-opacity="0.18"/>
+  <rect x="116" y="126" width="86" height="86" rx="20" fill="#06B6D4"/>
+  <path d="M143 151C143 144.925 147.925 140 154 140H175C181.075 140 186 144.925 186 151V198L164.5 186.5L143 198V151Z" fill="white"/>
+  <text x="116" y="290" fill="white" font-family="Segoe UI, Arial, sans-serif" font-size="68" font-weight="700">Bookshelf</text>
+  <text x="116" y="350" fill="#A5F3FC" font-family="Segoe UI, Arial, sans-serif" font-size="28">Track, discover, and share books with readers worldwide.</text>
+  <text x="116" y="415" fill="#CBD5E1" font-family="Segoe UI, Arial, sans-serif" font-size="24">Social reading, knowledge capture, public profiles, and book discovery.</text>
+</svg>

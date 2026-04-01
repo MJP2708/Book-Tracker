@@ -11,31 +11,46 @@ export async function GET(
   _request: NextRequest,
   context: { params: Promise<{ bookId: string }> }
 ) {
+  const { bookId } = await context.params;
+  const session = await auth();
+
   try {
-    const { bookId } = await context.params;
-
-    const session = await auth();
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const user = await prisma.user.findUnique({ where: { email: session.user.email } });
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    await ensureDefaultShelves(user.id);
-
-    const [book, userBook] = await Promise.all([
-      prisma.book.findUnique({ where: { id: bookId } }),
-      prisma.userBook.findUnique({
-        where: { userId_bookId: { userId: user.id, bookId } },
-        include: { shelf: true },
-      }),
-    ]);
+    const book = await prisma.book.findUnique({ where: { id: bookId } });
 
     if (!book) {
       return NextResponse.json({ error: "Book not found" }, { status: 404 });
+    }
+
+    let userBook: {
+      id: string;
+      status: string;
+      pagesRead: number;
+      totalPages: number | null;
+      progress: number;
+      note: string;
+      highlights: string[];
+    } | null = null;
+
+    if (session?.user?.email) {
+      const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+      if (user) {
+        await ensureDefaultShelves(user.id);
+        const userBookRecord = await prisma.userBook.findUnique({
+          where: { userId_bookId: { userId: user.id, bookId } },
+          include: { shelf: true },
+        });
+        userBook = userBookRecord
+          ? {
+              id: userBookRecord.id,
+              status: statusFromShelfName(userBookRecord.shelf.name),
+              pagesRead: userBookRecord.pagesRead,
+              totalPages: book.totalPages,
+              progress: userBookRecord.progress,
+              note: userBookRecord.notes || "",
+              highlights: userBookRecord.highlights,
+            }
+          : null;
+      }
     }
 
     return NextResponse.json({
@@ -45,22 +60,10 @@ export async function GET(
       coverImage: book.coverUrl,
       description: book.description,
       totalPages: book.totalPages,
-      userBook: userBook
-        ? {
-            id: userBook.id,
-            status: statusFromShelfName(userBook.shelf.name),
-            pagesRead: userBook.pagesRead,
-            totalPages: book.totalPages,
-            progress: userBook.progress,
-            note: userBook.notes || "",
-            highlights: userBook.highlights,
-          }
-        : null,
+      userBook,
     });
   } catch (error) {
     console.error("Book detail error", error);
-    const { bookId } = await context.params;
-    const session = await auth();
     const offlineBook = getOfflineBook(bookId);
     if (!offlineBook) return NextResponse.json({ error: "Book not found" }, { status: 404 });
     const offlineUserBook = session?.user?.email ? getOfflineUserBook(session.user.email, bookId) : null;

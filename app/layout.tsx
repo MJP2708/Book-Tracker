@@ -6,12 +6,34 @@ import { getSiteUrl } from "@/lib/site-url";
 const siteUrl = getSiteUrl();
 
 export const metadata: Metadata = {
-  title: "Bookshelf - The Netflix of Knowledge",
+  title: {
+    default: "Bookshelf – Track, Discover, and Share Books",
+    template: "%s | Bookshelf",
+  },
   description:
-    "Personalized learning and book tracking for students who want structure, momentum, and better reading habits.",
+    "Bookshelf helps you track your reading, discover books, and connect with readers worldwide.",
+  keywords: [
+    "bookshelf",
+    "book tracker",
+    "reading app",
+    "book discovery",
+    "reading community",
+    "social reading",
+  ],
   metadataBase: new URL(siteUrl),
-  alternates: {
-    canonical: "/",
+  openGraph: {
+    type: "website",
+    url: siteUrl,
+    title: "Bookshelf – Track, Discover, and Share Books",
+    description: "Bookshelf helps you track your reading, discover books, and connect with readers worldwide.",
+    siteName: "Bookshelf",
+    images: [{ url: "/og-cover.svg", width: 1200, height: 630, alt: "Bookshelf social reading platform" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Bookshelf – Track, Discover, and Share Books",
+    description: "Bookshelf helps you track your reading, discover books, and connect with readers worldwide.",
+    images: ["/og-cover.svg"],
   },
   robots: {
     index: true,

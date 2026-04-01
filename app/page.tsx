@@ -1,8 +1,26 @@
-"use client";
-
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Navigation } from "@/components/Navigation";
 import { ArrowRight, BookOpen, Flame, Route } from "lucide-react";
+
+export const metadata: Metadata = {
+  title: "Bookshelf – Track, Discover, and Share Books",
+  description: "Bookshelf helps you track your reading, discover books, and connect with readers worldwide.",
+  keywords: ["bookshelf", "book tracker", "reading app", "social reading"],
+  alternates: { canonical: "https://bookshelf.dekds.com/" },
+  openGraph: {
+    title: "Bookshelf – Track, Discover, and Share Books",
+    description: "Bookshelf helps you track your reading, discover books, and connect with readers worldwide.",
+    url: "https://bookshelf.dekds.com/",
+    images: [{ url: "/og-cover.svg", width: 1200, height: 630, alt: "Bookshelf social reading platform" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Bookshelf – Track, Discover, and Share Books",
+    description: "Bookshelf helps you track your reading, discover books, and connect with readers worldwide.",
+    images: ["/og-cover.svg"],
+  },
+};
 
 export default function LandingPage() {
   return (
