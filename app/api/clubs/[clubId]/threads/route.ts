@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { requireAuthenticatedUserForApi } from "@/lib/monetization/guards";
 
 const demoThreads = [
   {
@@ -31,6 +33,31 @@ export async function GET(_request: NextRequest, context: RouteContext) {
 export async function POST(request: NextRequest, context: RouteContext) {
   const { clubId } = await context.params;
   const body = await request.json();
+  const supabase = await getSupabaseServerClient();
+
+  if (supabase) {
+    const auth = await requireAuthenticatedUserForApi();
+    if (!auth.allowed) {
+      return auth.response!;
+    }
+
+    const { data, error } = await supabase
+      .from("club_threads")
+      .insert({
+        club_id: clubId,
+        title: body.title ?? "Untitled discussion",
+        body: body.body ?? null,
+        created_by: auth.userId,
+      })
+      .select("*")
+      .single();
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
+    return NextResponse.json({ clubId, thread: data }, { status: 201 });
+  }
 
   return NextResponse.json(
     {

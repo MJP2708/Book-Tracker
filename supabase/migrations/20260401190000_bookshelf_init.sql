@@ -27,7 +27,8 @@ create table if not exists public.books (
   pages integer not null,
   published_year integer,
   affiliate_url text,
-  created_at timestamptz default now()
+  created_at timestamptz default now(),
+  unique (title, author)
 );
 
 create table if not exists public.shelves (
@@ -85,7 +86,7 @@ create table if not exists public.activities (
 create table if not exists public.book_clubs (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid not null references public.users(id) on delete cascade,
-  name text not null,
+  name text not null unique,
   description text default '',
   visibility text not null check (visibility in ('public', 'private')),
   current_book_id uuid references public.books(id) on delete set null,

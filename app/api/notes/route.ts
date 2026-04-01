@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { requireAuthenticatedUserForApi } from "@/lib/monetization/guards";
 
 const noteSchema = z.object({
   bookId: z.string().min(1),
@@ -19,10 +20,15 @@ export async function POST(request: NextRequest) {
   const supabase = await getSupabaseServerClient();
 
   if (supabase) {
+    const auth = await requireAuthenticatedUserForApi();
+    if (!auth.allowed) {
+      return auth.response!;
+    }
+
     const { data, error } = await supabase
       .from("notes")
       .insert({
-        user_id: "user_demo_01",
+        user_id: auth.userId,
         book_id: parsed.data.bookId,
         quote: parsed.data.quote,
         note: parsed.data.note,
