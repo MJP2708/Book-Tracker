@@ -1,7 +1,8 @@
 export const runtime = "nodejs";
 
 import { prisma } from "@/lib/prisma";
-import { getOfflinePublicProfile } from "@/lib/offline-store";
+import { auth } from "@/lib/auth";
+import { getOfflinePublicProfile, checkOfflineIsFollowing } from "@/lib/offline-store";
 import { statusFromShelfName } from "@/lib/shelf-utils";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -11,6 +12,7 @@ export async function GET(
 ) {
   try {
     const { userId } = await context.params;
+    const session = await auth();
 
     const [user, userBooks] = await Promise.all([
       prisma.user.findUnique({
@@ -40,8 +42,20 @@ export async function GET(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    let isFollowing = false;
+    if (session?.user?.email) {
+      const currentUser = await prisma.user.findUnique({ where: { email: session.user.email }, select: { id: true } });
+      if (currentUser && currentUser.id !== userId) {
+        const follow = await prisma.follow.findUnique({
+          where: { followerId_followingId: { followerId: currentUser.id, followingId: userId } },
+        });
+        isFollowing = !!follow;
+      }
+    }
+
     return NextResponse.json({
       user,
+      isFollowing,
       userBooks: userBooks.map((entry) => ({
         id: entry.id,
         status: statusFromShelfName(entry.shelf.name),
@@ -59,6 +73,8 @@ export async function GET(
     if (!profile) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
-    return NextResponse.json(profile);
+    const session = await auth();
+    const isFollowing = session?.user?.email ? checkOfflineIsFollowing(session.user.email, userId) : false;
+    return NextResponse.json({ ...profile, isFollowing });
   }
 }

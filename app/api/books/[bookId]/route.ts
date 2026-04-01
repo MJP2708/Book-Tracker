@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ensureDefaultShelves, shelfNameFromStatus, statusFromShelfName } from "@/lib/shelf-utils";
 import { NextRequest, NextResponse } from "next/server";
+import { getOfflineBook, getOfflineUserBook, updateOfflineUserBookByBookId } from "@/lib/offline-store";
 
 export async function GET(
   _request: NextRequest,
@@ -57,7 +58,16 @@ export async function GET(
     });
   } catch (error) {
     console.error("Book detail error", error);
-    return NextResponse.json({ error: "Failed to fetch book" }, { status: 500 });
+    const { bookId } = await context.params;
+    const session = await auth();
+    const offlineBook = getOfflineBook(bookId);
+    if (!offlineBook) return NextResponse.json({ error: "Book not found" }, { status: 404 });
+    const offlineUserBook = session?.user?.email ? getOfflineUserBook(session.user.email, bookId) : null;
+    return NextResponse.json({
+      id: offlineBook.id, title: offlineBook.title, author: offlineBook.author,
+      coverImage: offlineBook.coverImage, description: offlineBook.description, totalPages: offlineBook.totalPages,
+      userBook: offlineUserBook,
+    });
   }
 }
 
@@ -65,69 +75,48 @@ export async function PATCH(
   request: NextRequest,
   context: { params: Promise<{ bookId: string }> }
 ) {
+  const { bookId } = await context.params;
+  const session = await auth();
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const body = await request.json() as Record<string, unknown>;
+  const status = typeof body.status === "string" ? body.status : "unread";
+  const pagesRead = Number.isFinite(Number(body.pagesRead)) ? Number(body.pagesRead) : 0;
+  const totalPages = Number.isFinite(Number(body.totalPages)) ? Number(body.totalPages) : null;
+  const note = typeof body.note === "string" ? body.note : "";
+  const highlights = Array.isArray(body.highlights)
+    ? body.highlights.map((entry: unknown) => String(entry).trim()).filter(Boolean)
+    : [];
+
   try {
-    const { bookId } = await context.params;
-    const session = await auth();
-
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const user = await prisma.user.findUnique({ where: { email: session.user.email } });
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
+    if (!user) throw new Error("User not in DB");
 
     const shelves = await ensureDefaultShelves(user.id);
-
-    const body = await request.json();
-    const status = typeof body.status === "string" ? body.status : "unread";
-    const pagesRead = Number.isFinite(Number(body.pagesRead)) ? Number(body.pagesRead) : 0;
-    const totalPages = Number.isFinite(Number(body.totalPages)) ? Number(body.totalPages) : null;
-    const note = typeof body.note === "string" ? body.note : "";
-    const highlights = Array.isArray(body.highlights)
-      ? body.highlights.map((entry: unknown) => String(entry).trim()).filter(Boolean)
-      : [];
-
     const shelfName = shelfNameFromStatus(status);
     const targetShelf = Object.values(shelves).find((shelf) => shelf?.name === shelfName);
-
-    if (!targetShelf) {
-      return NextResponse.json({ error: "Target shelf not found" }, { status: 500 });
-    }
+    if (!targetShelf) return NextResponse.json({ error: "Target shelf not found" }, { status: 500 });
 
     if (totalPages !== null) {
-      await prisma.book.update({
-        where: { id: bookId },
-        data: { totalPages },
-      });
+      await prisma.book.update({ where: { id: bookId }, data: { totalPages } });
     }
 
     const progress = totalPages && totalPages > 0 ? Math.min(100, Math.round((pagesRead / totalPages) * 100)) : 0;
 
     const userBook = await prisma.userBook.upsert({
       where: { userId_bookId: { userId: user.id, bookId } },
-      update: {
-        shelfId: targetShelf.id,
-        pagesRead,
-        notes: note,
-        highlights,
-        progress,
-      },
-      create: {
-        userId: user.id,
-        bookId,
-        shelfId: targetShelf.id,
-        pagesRead,
-        notes: note,
-        highlights,
-        progress,
-      },
+      update: { shelfId: targetShelf.id, pagesRead, notes: note, highlights, progress },
+      create: { userId: user.id, bookId, shelfId: targetShelf.id, pagesRead, notes: note, highlights, progress },
     });
 
     return NextResponse.json(userBook);
   } catch (error) {
     console.error("Book update error", error);
-    return NextResponse.json({ error: "Failed to update book details" }, { status: 500 });
+    const updated = updateOfflineUserBookByBookId(session.user.email, bookId, {
+      status: status as "unread" | "reading" | "finished", pagesRead, totalPages, notes: note, highlights,
+    });
+    return NextResponse.json(updated || { error: "Book not found" }, { status: updated ? 200 : 404 });
   }
 }

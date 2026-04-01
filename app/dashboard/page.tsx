@@ -98,8 +98,9 @@ export default function DashboardPage() {
     });
 
     if (res.ok) {
-      const updated = (await fetch("/api/library").then((r) => r.json())) as LibraryEntry[];
-      setLibrary(updated);
+      const [libraryRes, meRes] = await Promise.all([fetch("/api/library"), fetch("/api/me")]);
+      if (libraryRes.ok) setLibrary((await libraryRes.json()) as LibraryEntry[]);
+      if (meRes.ok) { const me = (await meRes.json()) as { stats: DashboardStats }; setStats(me.stats); }
     }
     setBusyLabel(null);
   };

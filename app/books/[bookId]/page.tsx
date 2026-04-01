@@ -2,6 +2,7 @@
 
 import { Navigation } from "@/components/Navigation";
 import { Bookmark, Highlighter, Save } from "lucide-react";
+import { Bookmark, Highlighter, Save, X } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -188,8 +189,16 @@ export default function BookDetailPage() {
               </div>
               <div className="space-y-2">
                 {highlights.map((item, index) => (
-                  <div key={`${item}-${index}`} className="rounded-lg bg-zinc-100 px-3 py-2 text-sm dark:bg-zinc-800">
-                    {item}
+                  <div key={`${item}-${index}`} className="flex items-center justify-between rounded-lg bg-zinc-100 px-3 py-2 text-sm dark:bg-zinc-800">
+                    <span className="flex-1">{item}</span>
+                    <button
+                      type="button"
+                      onClick={() => setHighlights((prev) => prev.filter((_, i) => i !== index))}
+                      className="ml-2 text-zinc-400 hover:text-rose-500"
+                      aria-label="Remove highlight"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
                   </div>
                 ))}
                 {highlights.length === 0 && <p className="text-xs text-zinc-500">No highlights yet.</p>}

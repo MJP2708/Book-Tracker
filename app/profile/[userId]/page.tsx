@@ -41,7 +41,9 @@ export default function PublicProfilePage() {
     const run = async () => {
       const response = await fetch(`/api/users/${params.userId}/library`);
       if (response.ok) {
-        setPayload((await response.json()) as PublicProfileResponse);
+        const data = (await response.json()) as PublicProfileResponse & { isFollowing?: boolean };
+        setPayload(data);
+        setIsFollowing(data.isFollowing ?? false);
       }
     };
 

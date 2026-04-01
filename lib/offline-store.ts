@@ -31,7 +31,7 @@ type OfflineLibraryEntry = {
   notes: string | null;
   tags: string[];
   updatedAt: string;
-};
+  highlights: string[];
 
 type OfflineState = {
   books: Map<string, OfflineBook>;
@@ -66,7 +66,8 @@ function createState(): OfflineState {
       coverImage: null,
       description: "Focused success in a distracted world.",
       totalPages: 304,
-      tags: ["focus", "productivity"],
+      highlights?: string[];
+    }) {
       createdAt: now,
       updatedAt: now,
     },
@@ -82,7 +83,8 @@ function createState(): OfflineState {
     usersById: new Map(),
     libraryByUserEmail: new Map(),
     follows: new Set(),
-  };
+          highlights: existing.highlights || [],
+          tags: Array.isArray(input.tags) ? input.tags : existing.tags,
 }
 
 function state(): OfflineState {
@@ -92,6 +94,7 @@ function state(): OfflineState {
   return globalState.__offlineStore;
 }
 
+          highlights: [],
 function nowIso() {
   return new Date().toISOString();
 }
@@ -378,4 +381,95 @@ export function getOfflinePublicProfile(userId: string) {
       },
     })),
   };
+}
+
+export function getOfflineBook(bookId: string) {
+  return state().books.get(bookId) || null;
+}
+
+export function getOfflineUserBook(email: string, bookId: string) {
+  const s = state();
+  const user = getOrCreateOfflineUser(email);
+  const entries = s.libraryByUserEmail.get(user.email);
+  if (!entries) return null;
+  const entry = entries.get(bookId);
+  if (!entry) return null;
+  const book = s.books.get(bookId);
+  if (!book) return null;
+  const progress = book.totalPages && book.totalPages > 0 ? Math.min(100, Math.round((entry.pagesRead / book.totalPages) * 100)) : 0;
+  return { id: entry.id, status: entry.status, pagesRead: entry.pagesRead, totalPages: book.totalPages, progress, note: entry.notes || "", highlights: entry.highlights || [] };
+}
+
+export function updateOfflineUserBookByBookId(
+  email: string,
+  bookId: string,
+  patch: { status?: ReadingStatus; pagesRead?: number; totalPages?: number | null; notes?: string; highlights?: string[] }
+) {
+  const s = state();
+  const user = getOrCreateOfflineUser(email);
+  const book = s.books.get(bookId);
+  if (!book) return null;
+  const existing = s.libraryByUserEmail.get(user.email);
+  const map = existing || new Map<string, OfflineLibraryEntry>();
+  let entry = map.get(bookId);
+  if (!entry) {
+    entry = { id: makeId("offline-entry"), userEmail: user.email, bookId, status: patch.status || "unread", pagesRead: typeof patch.pagesRead === "number" ? patch.pagesRead : 0, notes: typeof patch.notes === "string" ? patch.notes : null, highlights: Array.isArray(patch.highlights) ? patch.highlights : [], tags: [], updatedAt: nowIso() };
+  } else {
+    if (patch.status) entry.status = patch.status;
+    if (typeof patch.pagesRead === "number") entry.pagesRead = patch.pagesRead;
+    if (typeof patch.notes === "string") entry.notes = patch.notes;
+    if (Array.isArray(patch.highlights)) entry.highlights = patch.highlights;
+    entry.updatedAt = nowIso();
+  }
+  map.set(bookId, entry);
+  s.libraryByUserEmail.set(user.email, map);
+  if (patch.totalPages !== undefined) { book.totalPages = patch.totalPages; book.updatedAt = nowIso(); }
+  return entry;
+}
+
+function findEntryById(email: string, entryId: string): { entry: OfflineLibraryEntry; bookId: string } | null {
+  const s = state();
+  const user = getOrCreateOfflineUser(email);
+  const userEntries = s.libraryByUserEmail.get(user.email);
+  if (!userEntries) return null;
+  for (const [bookId, entry] of userEntries) {
+    if (entry.id === entryId) return { entry, bookId };
+  }
+  return null;
+}
+
+export function updateOfflineLibraryEntryById(
+  email: string,
+  entryId: string,
+  patch: { status?: ReadingStatus; pagesRead?: number; notes?: string; tags?: string[]; highlights?: string[] }
+) {
+  const found = findEntryById(email, entryId);
+  if (!found) return null;
+  const { entry, bookId } = found;
+  if (patch.status) entry.status = patch.status;
+  if (typeof patch.pagesRead === "number") entry.pagesRead = patch.pagesRead;
+  if (typeof patch.notes === "string") entry.notes = patch.notes;
+  if (Array.isArray(patch.tags)) entry.tags = patch.tags;
+  if (Array.isArray(patch.highlights)) entry.highlights = patch.highlights;
+  entry.updatedAt = nowIso();
+  const book = state().books.get(bookId);
+  if (!book) return null;
+  return { id: entry.id, status: entry.status, pagesRead: entry.pagesRead, totalPages: book.totalPages, tags: entry.tags, book: { id: book.id, title: book.title, author: book.author, coverImage: book.coverImage, description: book.description } };
+}
+
+export function deleteOfflineLibraryEntryById(email: string, entryId: string) {
+  const found = findEntryById(email, entryId);
+  if (!found) return false;
+  const s = state();
+  const user = getOrCreateOfflineUser(email);
+  const userEntries = s.libraryByUserEmail.get(user.email);
+  if (!userEntries) return false;
+  userEntries.delete(found.bookId);
+  return true;
+}
+
+export function checkOfflineIsFollowing(followerEmail: string, followingId: string) {
+  const s = state();
+  const follower = getOrCreateOfflineUser(followerEmail);
+  return s.follows.has(`${follower.id}::${followingId}`);
 }
