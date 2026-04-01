@@ -64,7 +64,7 @@ export default function ClubsPage() {
     <>
       <Navigation />
       <main className="page-shell">
-        <div className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[350px_1fr] lg:px-8">
+        <div className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-6 sm:px-6 sm:py-8 lg:grid-cols-[350px_1fr] lg:px-8">
           <aside className="glass-card h-fit">
             <p className="display-title text-xl">Create Book Club</p>
             <form className="mt-4 space-y-3" onSubmit={createClub}>
@@ -81,12 +81,12 @@ export default function ClubsPage() {
           <section className="space-y-3">
             {clubs.map((club) => (
               <article key={club.id} className="glass-card">
-                <div className="mb-2 flex items-start justify-between gap-3">
+                <div className="mb-2 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <p className="display-title text-xl">{club.name}</p>
                     <p className="text-sm text-zinc-500">Hosted by {club.ownerName}</p>
                   </div>
-                  <button className="secondary-btn" onClick={() => void joinClub(club.id)}>
+                  <button className="secondary-btn w-full sm:w-auto" onClick={() => void joinClub(club.id)}>
                     <Users className="h-4 w-4" />Join
                   </button>
                 </div>

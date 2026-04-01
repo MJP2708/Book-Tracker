@@ -104,7 +104,7 @@ export default function FeedPage() {
     <>
       <Navigation />
       <main className="page-shell">
-        <div className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[1fr_330px] lg:px-8">
+        <div className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-6 sm:px-6 sm:py-8 lg:grid-cols-[1fr_330px] lg:px-8">
           <section className="space-y-4">
             <article className="glass-card">
               <p className="display-title text-2xl">Community Feed</p>
@@ -120,9 +120,9 @@ export default function FeedPage() {
                 <textarea value={postDraft} onChange={(e) => setPostDraft(e.target.value)} rows={4} placeholder="What did you learn today?"
                   className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900" />
                 {insight && <p className="rounded-xl bg-cyan-50 p-3 text-xs text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-300">AI Insight: {insight}</p>}
-                <div className="flex gap-2">
-                  <button type="submit" className="primary-btn"><Send className="h-4 w-4" />Publish</button>
-                  <button type="button" className="secondary-btn" onClick={() => void extractInsights()}><Sparkles className="h-4 w-4" />Summarize</button>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <button type="submit" className="primary-btn w-full sm:w-auto"><Send className="h-4 w-4" />Publish</button>
+                  <button type="button" className="secondary-btn w-full sm:w-auto" onClick={() => void extractInsights()}><Sparkles className="h-4 w-4" />Summarize</button>
                 </div>
               </form>
             </article>
@@ -130,14 +130,14 @@ export default function FeedPage() {
             <article className="space-y-3">
               {posts.map((post) => (
                 <div key={post.id} className="glass-card">
-                  <div className="mb-2 flex items-center justify-between text-xs text-zinc-500">
+                  <div className="mb-2 flex flex-col gap-1 text-xs text-zinc-500 sm:flex-row sm:items-center sm:justify-between">
                     <p>{post.authorName} • {post.kind === "review" ? "Review" : "Post"}</p>
                     <p>{new Date(post.createdAt).toLocaleString()}</p>
                   </div>
                   {post.bookTitle && <p className="mb-1 text-sm font-semibold text-cyan-600">{post.bookTitle}</p>}
                   <p className="text-sm text-zinc-700 dark:text-zinc-200">{post.content}</p>
                   {post.tags.length > 0 && <p className="mt-2 text-xs text-zinc-500">#{post.tags.join(" #")}</p>}
-                  <div className="mt-3 flex gap-2">
+                  <div className="mt-3 flex flex-wrap gap-2">
                     <button type="button" className="secondary-btn text-xs" onClick={() => void likePost(post.id)}>
                       <Heart className="h-4 w-4" />{post.likeCount}
                     </button>

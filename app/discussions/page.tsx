@@ -91,7 +91,7 @@ export default function DiscussionsPage() {
     <>
       <Navigation />
       <main className="page-shell">
-        <div className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[380px_1fr] lg:px-8">
+        <div className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-6 sm:px-6 sm:py-8 lg:grid-cols-[380px_1fr] lg:px-8">
           <aside className="glass-card h-fit">
             <p className="display-title text-xl">Start Discussion</p>
             <form className="mt-4 space-y-3" onSubmit={createThread}>
@@ -113,7 +113,7 @@ export default function DiscussionsPage() {
                 <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">{thread.content}</p>
                 <p className="mt-2 text-xs text-zinc-500">by {thread.authorName}</p>
 
-                <div className="mt-3 flex gap-2">
+                <div className="mt-3 flex flex-wrap gap-2">
                   <button className="secondary-btn text-xs" onClick={() => void vote(thread.id, "up")}> 
                     <ArrowBigUp className="h-4 w-4" />{thread.upvotes}
                   </button>
@@ -134,14 +134,14 @@ export default function DiscussionsPage() {
                   ))}
                 </div>
 
-                <div className="mt-3 flex gap-2">
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                   <input
                     value={replyDraft[thread.id] || ""}
                     onChange={(e) => setReplyDraft((prev) => ({ ...prev, [thread.id]: e.target.value }))}
                     placeholder="Write a reply"
                     className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
                   />
-                  <button className="secondary-btn" onClick={() => void reply(thread.id)}>Reply</button>
+                  <button className="secondary-btn w-full sm:w-auto" onClick={() => void reply(thread.id)}>Reply</button>
                 </div>
               </article>
             ))}

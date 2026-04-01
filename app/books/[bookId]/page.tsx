@@ -1,7 +1,6 @@
 "use client";
 
 import { Navigation } from "@/components/Navigation";
-import { Bookmark, Highlighter, Save } from "lucide-react";
 import { Bookmark, Highlighter, Save, X } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
