@@ -1,82 +1,98 @@
 "use client";
 
-import Link from "next/link";
-import { Navigation } from "@/components/Navigation";
-import { BookOpen, Chrome } from "lucide-react";
-import { signIn } from "next-auth/react";
 import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setError("");
-    setIsLoading(true);
+    setLoading(true);
+    setMessage("");
 
-    const result = await signIn("credentials", { email, password, redirect: false });
-    setIsLoading(false);
-
-    if (result?.error) {
-      setError(`Sign-in failed: ${result.error}`);
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) {
+      setMessage("Supabase is not configured yet.");
+      setLoading(false);
       return;
     }
 
-    const params = new URLSearchParams(window.location.search);
-    router.push(params.get("from") || "/dashboard");
-  }
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setLoading(false);
 
-  async function signInGoogle() {
-    await signIn("google", { callbackUrl: "/dashboard" });
-  }
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    setMessage("Login successful. Redirecting...");
+    window.location.href = "/";
+  };
+
+  const loginWithGoogle = async () => {
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) {
+      setMessage("Supabase is not configured yet.");
+      return;
+    }
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/` },
+    });
+
+    if (error) {
+      setMessage(error.message);
+    }
+  };
 
   return (
-    <>
-      <Navigation />
-      <main className="page-shell flex min-h-[calc(100vh-4rem)] items-center justify-center px-4">
-        <section className="glass-card w-full max-w-md space-y-5 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-cyan-500 text-white">
-            <BookOpen className="h-6 w-6" />
-          </div>
+    <main className="page-shell">
+      <div className="mx-auto flex min-h-[calc(100vh-64px)] w-full max-w-md items-center px-4 py-10">
+        <section className="glass-card w-full space-y-4">
           <div>
-            <h1 className="display-title text-3xl">Welcome to Bookshelf</h1>
-            <p className="mt-2 text-sm text-zinc-500">Sign in with email/password or Google.</p>
+            <h1 className="display-title text-3xl">Welcome Back</h1>
+            <p className="mt-1 text-sm text-stone-500">Sign in to continue your reading journey.</p>
           </div>
-          <form className="space-y-3 text-left" onSubmit={handleSubmit}>
+
+          <form onSubmit={submit} className="space-y-3">
             <input
               type="email"
+              required
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              required
-              placeholder="you@example.com"
-              className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-cyan-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+              placeholder="Email"
+              className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm outline-none ring-emerald-400 focus:ring dark:border-stone-700 dark:bg-stone-900"
             />
             <input
               type="password"
+              required
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              required
-              placeholder="Your password"
-              className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-cyan-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+              placeholder="Password"
+              className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm outline-none ring-emerald-400 focus:ring dark:border-stone-700 dark:bg-stone-900"
             />
-            <button type="submit" className="primary-btn w-full" disabled={isLoading}>
-              {isLoading ? "Signing in..." : "Continue with Email"}
+            <button disabled={loading} className="primary-btn w-full">
+              {loading ? "Signing in..." : "Login"}
             </button>
-            <button type="button" className="secondary-btn w-full" onClick={() => void signInGoogle()}>
-              <Chrome className="h-4 w-4" />Continue with Google
-            </button>
-            {error ? <p className="text-center text-sm text-rose-500">{error}</p> : null}
           </form>
-          <p className="text-sm text-zinc-500">
-            New here? <Link className="text-cyan-600" href="/auth/signup">Create account</Link>
+
+          <button type="button" onClick={loginWithGoogle} className="secondary-btn w-full">
+            Continue with Google
+          </button>
+
+          {message ? <p className="text-sm text-stone-600 dark:text-stone-300">{message}</p> : null}
+
+          <p className="text-xs text-stone-500">
+            No account? <Link href="/auth/signup" className="text-emerald-700 dark:text-emerald-300">Create one</Link>
           </p>
         </section>
-      </main>
-    </>
+      </div>
+    </main>
   );
 }

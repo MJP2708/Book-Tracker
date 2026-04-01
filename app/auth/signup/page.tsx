@@ -1,111 +1,114 @@
 "use client";
 
-import Link from "next/link";
-import { Navigation } from "@/components/Navigation";
-import { Chrome, Rocket } from "lucide-react";
-import { signIn } from "next-auth/react";
 import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export default function SignupPage() {
-  const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setError("");
-    setIsLoading(true);
+    setLoading(true);
+    setMessage("");
 
-    const signup = await fetch("/api/auth/signup", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password }),
-    });
-    if (!signup.ok) {
-      const payload = (await signup.json().catch(() => ({}))) as { error?: string };
-      setError(payload.error || "Sign-up failed");
-      setIsLoading(false);
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) {
+      setMessage("Supabase is not configured yet.");
+      setLoading(false);
       return;
     }
 
-    const result = await signIn("credentials", {
-      name,
+    const { error } = await supabase.auth.signUp({
       email,
       password,
-      redirect: false,
+      options: {
+        data: {
+          display_name: name,
+        },
+      },
     });
 
-    setIsLoading(false);
+    setLoading(false);
 
-    if (result?.error) {
-      setError(`Sign-up failed: ${result.error}`);
+    if (error) {
+      setMessage(error.message);
       return;
     }
 
-    router.push("/dashboard");
-  }
+    setMessage("Account created. Check your email for verification.");
+  };
 
-  async function signInGoogle() {
-    await signIn("google", { callbackUrl: "/dashboard" });
-  }
+  const signupWithGoogle = async () => {
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) {
+      setMessage("Supabase is not configured yet.");
+      return;
+    }
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/` },
+    });
+
+    if (error) {
+      setMessage(error.message);
+    }
+  };
 
   return (
-    <>
-      <Navigation />
-      <main className="page-shell flex min-h-[calc(100vh-4rem)] items-center justify-center px-4">
-        <section className="glass-card w-full max-w-md space-y-5 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500 text-white">
-            <Rocket className="h-6 w-6" />
-          </div>
+    <main className="page-shell">
+      <div className="mx-auto flex min-h-[calc(100vh-64px)] w-full max-w-md items-center px-4 py-10">
+        <section className="glass-card w-full space-y-4">
           <div>
-            <h1 className="display-title text-3xl">Start your learning OS</h1>
-            <p className="mt-2 text-sm text-zinc-500">
-              Create your account with your name and email.
-            </p>
+            <h1 className="display-title text-3xl">Create Account</h1>
+            <p className="mt-1 text-sm text-stone-500">Start tracking, reviewing, and joining clubs.</p>
           </div>
-          <form className="space-y-3 text-left" onSubmit={handleSubmit}>
+
+          <form onSubmit={submit} className="space-y-3">
             <input
-              type="text"
+              required
               value={name}
               onChange={(event) => setName(event.target.value)}
-              required
-              placeholder="Your name"
-              className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-cyan-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+              placeholder="Display name"
+              className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm outline-none ring-emerald-400 focus:ring dark:border-stone-700 dark:bg-stone-900"
             />
             <input
               type="email"
+              required
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              required
-              placeholder="you@example.com"
-              className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-cyan-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+              placeholder="Email"
+              className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm outline-none ring-emerald-400 focus:ring dark:border-stone-700 dark:bg-stone-900"
             />
             <input
               type="password"
+              required
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              required
-              minLength={6}
-              placeholder="Create password"
-              className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-cyan-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+              placeholder="Password"
+              className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm outline-none ring-emerald-400 focus:ring dark:border-stone-700 dark:bg-stone-900"
             />
-            <button type="submit" className="primary-btn w-full" disabled={isLoading}>
-              {isLoading ? "Creating account..." : "Create Account"}
+            <button disabled={loading} className="primary-btn w-full">
+              {loading ? "Creating account..." : "Sign up"}
             </button>
-            <button type="button" className="secondary-btn w-full" onClick={() => void signInGoogle()}>
-              <Chrome className="h-4 w-4" />Continue with Google
-            </button>
-            {error ? <p className="text-center text-sm text-rose-500">{error}</p> : null}
           </form>
-          <p className="text-sm text-zinc-500">
-            Already have an account? <Link className="text-cyan-600" href="/auth/login">Sign in</Link>
+
+          <button type="button" onClick={signupWithGoogle} className="secondary-btn w-full">
+            Continue with Google
+          </button>
+
+          {message ? <p className="text-sm text-stone-600 dark:text-stone-300">{message}</p> : null}
+
+          <p className="text-xs text-stone-500">
+            Already have an account? <Link href="/auth/login" className="text-emerald-700 dark:text-emerald-300">Sign in</Link>
           </p>
         </section>
-      </main>
-    </>
+      </div>
+    </main>
   );
 }

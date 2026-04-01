@@ -1,6 +1,7 @@
 "use client";
 
-import { Book, BookOpen, Star, Calendar } from "lucide-react";
+import { Book, BookOpen, Star } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 
 interface BookCardProps {
@@ -46,9 +47,11 @@ export function BookCard({
           {/* Book Cover */}
           <div className="relative mb-4 overflow-hidden rounded-lg book-shadow aspect-[3/4] bg-gradient-to-br from-amber-200 to-orange-300">
             {coverImage ? (
-              <img
+              <Image
                 src={coverImage}
                 alt={title}
+                fill
+                sizes="(max-width: 768px) 100vw, 33vw"
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               />
             ) : (
