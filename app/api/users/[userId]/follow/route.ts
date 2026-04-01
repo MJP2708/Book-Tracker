@@ -3,6 +3,7 @@ export const runtime = "nodejs";
 import { auth } from "@/lib/auth";
 import { toggleOfflineFollow } from "@/lib/offline-store";
 import { prisma } from "@/lib/prisma";
+import { logActivity } from "@/lib/social-demo";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(
@@ -52,6 +53,13 @@ export async function POST(
         },
       });
       isFollowing = true;
+      logActivity({
+        actorEmail: session.user.email,
+        actorName: session.user.name || session.user.email.split("@")[0],
+        type: "followed_user",
+        text: "Started following another reader",
+        metadata: { followingId: userIdToFollow },
+      });
     }
 
     return NextResponse.json({ isFollowing }, { status: 200 });

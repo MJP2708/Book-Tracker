@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
-import { BookOpen, LayoutDashboard, Library, Route, User } from "lucide-react";
+import { BookOpen, Brain, LayoutDashboard, Library, MessageSquare, Route, Rss, User, Users } from "lucide-react";
 import { useState } from "react";
 import dynamic from "next/dynamic";
 
@@ -13,7 +13,11 @@ const ThemeToggle = dynamic(
 
 const signedInLinks = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/feed", label: "Feed", icon: Rss },
   { href: "/bookshelf", label: "Bookshelf", icon: Library },
+  { href: "/knowledge", label: "Knowledge", icon: Brain },
+  { href: "/clubs", label: "Clubs", icon: Users },
+  { href: "/discussions", label: "Discussions", icon: MessageSquare },
   { href: "/learning-paths", label: "Learning Paths", icon: Route },
   { href: "/profile", label: "Profile", icon: User },
 ];

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { ensureDefaultShelves, shelfNameFromStatus, statusFromShelfName } from "@/lib/shelf-utils";
 import { NextRequest, NextResponse } from "next/server";
 import { getOfflineBook, getOfflineUserBook, updateOfflineUserBookByBookId } from "@/lib/offline-store";
+import { logActivity } from "@/lib/social-demo";
 
 export async function GET(
   _request: NextRequest,
@@ -111,12 +112,29 @@ export async function PATCH(
       create: { userId: user.id, bookId, shelfId: targetShelf.id, pagesRead, notes: note, highlights, progress },
     });
 
+    logActivity({
+      actorEmail: session.user.email,
+      actorName: session.user.name || session.user.email.split("@")[0],
+      type: highlights.length > 0 ? "highlight_added" : "progress_updated",
+      text: highlights.length > 0 ? "Saved new highlights" : `Updated reading progress to ${progress}%`,
+      metadata: { bookId, progress },
+    });
+
     return NextResponse.json(userBook);
   } catch (error) {
     console.error("Book update error", error);
     const updated = updateOfflineUserBookByBookId(session.user.email, bookId, {
       status: status as "unread" | "reading" | "finished", pagesRead, totalPages, notes: note, highlights,
     });
+    if (updated) {
+      logActivity({
+        actorEmail: session.user.email,
+        actorName: session.user.name || session.user.email.split("@")[0],
+        type: highlights.length > 0 ? "highlight_added" : "progress_updated",
+        text: highlights.length > 0 ? "Saved new highlights" : "Updated reading progress",
+        metadata: { bookId },
+      });
+    }
     return NextResponse.json(updated || { error: "Book not found" }, { status: updated ? 200 : 404 });
   }
 }

@@ -2,7 +2,7 @@
 
 import { Navigation } from "@/components/Navigation";
 import { discoveryCategories } from "@/lib/mock-data";
-import { BookOpen, Flame, Target, Plus, Sparkles } from "lucide-react";
+import { BookOpen, Flame, Target, Plus, Sparkles, Users, MessageSquare } from "lucide-react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -36,6 +36,13 @@ type SearchBook = {
   description: string | null;
 };
 
+type DiscoverySnapshot = {
+  trendingDiscussions: Array<{ id: string; title: string; topic: string; score: number }>;
+  trendingUsers: Array<{ email: string; name: string; score: number }>;
+};
+
+type Recommendation = { title: string; reason: string };
+
 export default function DashboardPage() {
   const { status } = useSession();
   const router = useRouter();
@@ -45,6 +52,8 @@ export default function DashboardPage() {
   const [search, setSearch] = useState("");
   const [searchResults, setSearchResults] = useState<SearchBook[]>([]);
   const [busyLabel, setBusyLabel] = useState<string | null>(null);
+  const [discovery, setDiscovery] = useState<DiscoverySnapshot>({ trendingDiscussions: [], trendingUsers: [] });
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -56,7 +65,12 @@ export default function DashboardPage() {
     if (status !== "authenticated") return;
 
     const run = async () => {
-      const [meRes, libraryRes] = await Promise.all([fetch("/api/me"), fetch("/api/library")]);
+      const [meRes, libraryRes, discoveryRes, aiRes] = await Promise.all([
+        fetch("/api/me"),
+        fetch("/api/library"),
+        fetch("/api/discovery"),
+        fetch("/api/ai/recommendations?interests=business,productivity"),
+      ]);
 
       if (meRes.ok) {
         const me = (await meRes.json()) as { stats: DashboardStats };
@@ -66,6 +80,8 @@ export default function DashboardPage() {
         const entries = (await libraryRes.json()) as LibraryEntry[];
         setLibrary(entries);
       }
+      if (discoveryRes.ok) setDiscovery((await discoveryRes.json()) as DiscoverySnapshot);
+      if (aiRes.ok) setRecommendations((await aiRes.json()) as Recommendation[]);
     };
 
     void run();
@@ -273,6 +289,49 @@ export default function DashboardPage() {
               </div>
             </section>
           ))}
+
+          <section className="grid gap-4 lg:grid-cols-2">
+            <article className="glass-card">
+              <div className="mb-3 flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-cyan-500" />
+                <p className="display-title text-xl">AI Recommendations</p>
+              </div>
+              <div className="space-y-2 text-sm">
+                {recommendations.map((item) => (
+                  <div key={item.title} className="rounded-xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
+                    <p className="font-semibold">{item.title}</p>
+                    <p className="text-zinc-500">{item.reason}</p>
+                  </div>
+                ))}
+                {recommendations.length === 0 && <p className="text-zinc-500">No recommendations yet.</p>}
+              </div>
+            </article>
+
+            <article className="glass-card space-y-3">
+              <div>
+                <div className="mb-2 flex items-center gap-2">
+                  <Users className="h-5 w-5 text-emerald-500" />
+                  <p className="display-title text-xl">Trending Readers</p>
+                </div>
+                <div className="space-y-2 text-sm">
+                  {discovery.trendingUsers.slice(0, 5).map((user) => (
+                    <p key={user.email} className="rounded-lg bg-zinc-100 px-3 py-2 dark:bg-zinc-800">{user.name} · score {user.score}</p>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div className="mb-2 flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5 text-orange-500" />
+                  <p className="display-title text-xl">Hot Discussions</p>
+                </div>
+                <div className="space-y-2 text-sm">
+                  {discovery.trendingDiscussions.slice(0, 5).map((thread) => (
+                    <p key={thread.id} className="rounded-lg bg-zinc-100 px-3 py-2 dark:bg-zinc-800">#{thread.topic} · {thread.title}</p>
+                  ))}
+                </div>
+              </div>
+            </article>
+          </section>
         </div>
       </main>
     </>

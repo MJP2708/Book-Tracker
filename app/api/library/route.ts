@@ -3,6 +3,7 @@ export const runtime = "nodejs";
 import { auth } from "@/lib/auth";
 import { addOfflineLibraryEntry, getOrCreateOfflineUser, listOfflineLibrary } from "@/lib/offline-store";
 import { prisma } from "@/lib/prisma";
+import { logActivity } from "@/lib/social-demo";
 import { ensureDefaultShelves, shelfNameFromStatus, statusFromShelfName } from "@/lib/shelf-utils";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -77,6 +78,12 @@ export async function POST(request: NextRequest) {
       if (!created) {
         return NextResponse.json({ error: "Book not found" }, { status: 404 });
       }
+      logActivity({
+        actorEmail: session.user.email,
+        actorName: session.user.name || session.user.email.split("@")[0],
+        type: "book_added",
+        text: `Added a book to ${typeof status === "string" ? status : "unread"}`,
+      });
       return NextResponse.json(created, { status: 201 });
     }
 
@@ -120,6 +127,14 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    logActivity({
+      actorEmail: session.user.email,
+      actorName: session.user.name || session.user.email.split("@")[0],
+      type: "book_added",
+      text: `Added ${entry.book.title} to ${statusFromShelfName(entry.shelf.name)}`,
+      metadata: { bookId: entry.book.id },
+    });
+
     return NextResponse.json(
       {
         id: entry.id,
@@ -149,6 +164,12 @@ export async function POST(request: NextRequest) {
     if (!created) {
       return NextResponse.json({ error: "Book not found" }, { status: 404 });
     }
+    logActivity({
+      actorEmail: session.user.email,
+      actorName: session.user.name || session.user.email.split("@")[0],
+      type: "book_added",
+      text: `Added a book to ${typeof status === "string" ? status : "unread"}`,
+    });
     return NextResponse.json(created, { status: 201 });
   }
 }

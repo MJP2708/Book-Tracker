@@ -25,6 +25,16 @@ model User {
   pathCompletions UserLearningPathStep[]
   followers       Follow[] @relation("followed_user")
   following       Follow[] @relation("follower_user")
+  notes           Note[]
+  highlights      Highlight[]
+  quotes          Quote[]
+  posts           Post[]
+  comments        Comment[]
+  likes           Like[]
+  clubMembers     ClubMember[]
+  clubsOwned      Club[]             @relation("club_owner")
+  threads         DiscussionThread[]
+  messages        Message[]
 }
 
 model Account {
@@ -78,6 +88,10 @@ model Book {
 
   userBooks UserBook[]
   pathSteps LearningPathStep[]
+  notes     Note[]
+  highlights Highlight[]
+  quotes    Quote[]
+  posts     Post[]
 }
 
 model Shelf {
@@ -164,4 +178,149 @@ model Follow {
   @@unique([followerId, followingId])
   @@index([followerId])
   @@index([followingId])
+}
+
+model Note {
+  id        String   @id @default(cuid())
+  userId    String
+  bookId    String
+  content   String
+  tags      String[] @default([])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  book Book @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@index([userId, bookId])
+}
+
+model Highlight {
+  id        String   @id @default(cuid())
+  userId    String
+  bookId    String
+  text      String
+  tags      String[] @default([])
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  book Book @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@index([userId, bookId])
+}
+
+model Quote {
+  id        String   @id @default(cuid())
+  userId    String
+  bookId    String?
+  text      String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  book Book? @relation(fields: [bookId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+}
+
+model Post {
+  id        String   @id @default(cuid())
+  userId    String
+  bookId    String?
+  kind      String   @default("post")
+  content   String
+  tags      String[] @default([])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  book     Book?     @relation(fields: [bookId], references: [id], onDelete: SetNull)
+  comments Comment[]
+  likes    Like[]
+
+  @@index([userId, createdAt])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String
+  content   String
+  createdAt DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([postId, createdAt])
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+}
+
+model Club {
+  id          String       @id @default(cuid())
+  name        String
+  description String
+  ownerId     String
+  currentBook String?
+  targetDate  DateTime?
+  createdAt   DateTime     @default(now())
+
+  owner   User           @relation("club_owner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members ClubMember[]
+  threads DiscussionThread[]
+
+  @@index([ownerId])
+}
+
+model ClubMember {
+  id        String   @id @default(cuid())
+  clubId    String
+  userId    String
+  role      String   @default("member")
+  joinedAt  DateTime @default(now())
+
+  club Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([clubId, userId])
+  @@index([userId])
+}
+
+model DiscussionThread {
+  id        String    @id @default(cuid())
+  userId    String
+  clubId    String?
+  topic     String
+  title     String
+  content   String
+  score     Int       @default(0)
+  createdAt DateTime  @default(now())
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  club     Club?     @relation(fields: [clubId], references: [id], onDelete: SetNull)
+  messages Message[]
+
+  @@index([topic, createdAt])
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  threadId  String
+  userId    String
+  content   String
+  createdAt DateTime @default(now())
+
+  thread DiscussionThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  user   User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([threadId, createdAt])
 }

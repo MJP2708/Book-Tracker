@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Navigation } from "@/components/Navigation";
-import { BookOpen } from "lucide-react";
+import { BookOpen, Chrome } from "lucide-react";
 import { signIn } from "next-auth/react";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -18,11 +19,7 @@ export default function LoginPage() {
     setError("");
     setIsLoading(true);
 
-    const result = await signIn("credentials", {
-      email,
-      redirect: false,
-    });
-
+    const result = await signIn("credentials", { email, password, redirect: false });
     setIsLoading(false);
 
     if (result?.error) {
@@ -31,8 +28,11 @@ export default function LoginPage() {
     }
 
     const params = new URLSearchParams(window.location.search);
-    const from = params.get("from") || "/dashboard";
-    router.push(from);
+    router.push(params.get("from") || "/dashboard");
+  }
+
+  async function signInGoogle() {
+    await signIn("google", { callbackUrl: "/dashboard" });
   }
 
   return (
@@ -45,9 +45,7 @@ export default function LoginPage() {
           </div>
           <div>
             <h1 className="display-title text-3xl">Welcome to Bookshelf</h1>
-            <p className="mt-2 text-sm text-zinc-500">
-              Sign in with your email to access your learning shelves.
-            </p>
+            <p className="mt-2 text-sm text-zinc-500">Sign in with email/password or Google.</p>
           </div>
           <form className="space-y-3 text-left" onSubmit={handleSubmit}>
             <input
@@ -58,8 +56,19 @@ export default function LoginPage() {
               placeholder="you@example.com"
               className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-cyan-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
             />
+            <input
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              required
+              placeholder="Your password"
+              className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-cyan-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+            />
             <button type="submit" className="primary-btn w-full" disabled={isLoading}>
               {isLoading ? "Signing in..." : "Continue with Email"}
+            </button>
+            <button type="button" className="secondary-btn w-full" onClick={() => void signInGoogle()}>
+              <Chrome className="h-4 w-4" />Continue with Google
             </button>
             {error ? <p className="text-center text-sm text-rose-500">{error}</p> : null}
           </form>
