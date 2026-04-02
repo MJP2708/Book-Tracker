@@ -1,337 +1,225 @@
 "use client";
 
-import { Navigation } from "@/components/Navigation";
-import { discoveryCategories } from "@/lib/mock-data";
-import { BookOpen, Flame, Target, Plus, Sparkles, Users, MessageSquare } from "lucide-react";
+import { AppHeader } from "@/components/layout/AppHeader";
+import { Sparkles, Star } from "lucide-react";
 import { useSession } from "next-auth/react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
-type DashboardStats = {
-  booksRead: number;
-  totalPages: number;
-  readingStreak: number;
-};
+const quotePool = [
+  "A reader lives a thousand lives before he dies.",
+  "We read to know we are not alone.",
+  "Reading is to the mind what exercise is to the body.",
+  "Books are a uniquely portable magic.",
+  "Words can change entire futures.",
+];
 
-type LibraryEntry = {
-  id: string;
-  status: "unread" | "reading" | "finished";
-  pagesRead: number | null;
-  totalPages: number | null;
-  book: {
-    id: string;
-    title: string;
-    author: string | null;
-    coverImage: string | null;
-    description: string | null;
-  };
-};
-
-type SearchBook = {
-  id: string;
-  title: string;
-  author: string | null;
-  coverImage: string | null;
-  description: string | null;
-};
-
-type DiscoverySnapshot = {
-  trendingDiscussions: Array<{ id: string; title: string; topic: string; score: number }>;
-  trendingUsers: Array<{ email: string; name: string; score: number }>;
-};
-
-type Recommendation = { title: string; reason: string };
+const friendActivitySeed = [
+  { id: 1, name: "Maya R.", action: "finished The Midnight Library", time: "2h" },
+  { id: 2, name: "Alex K.", action: "posted a review for Dune", time: "4h" },
+  { id: 3, name: "Jenna L.", action: "joined Philosophy Circle", time: "7h" },
+];
 
 export default function DashboardPage() {
   const { status } = useSession();
   const router = useRouter();
 
-  const [stats, setStats] = useState<DashboardStats>({ booksRead: 0, totalPages: 0, readingStreak: 0 });
-  const [library, setLibrary] = useState<LibraryEntry[]>([]);
-  const [search, setSearch] = useState("");
-  const [searchResults, setSearchResults] = useState<SearchBook[]>([]);
-  const [busyLabel, setBusyLabel] = useState<string | null>(null);
-  const [discovery, setDiscovery] = useState<DiscoverySnapshot>({ trendingDiscussions: [], trendingUsers: [] });
-  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [logOpen, setLogOpen] = useState(false);
+  const [noteOpen, setNoteOpen] = useState(false);
+  const [ratingOpen, setRatingOpen] = useState(false);
+  const [pages, setPages] = useState(182);
+  const [note, setNote] = useState("");
+  const [saved, setSaved] = useState("");
+  const [stars, setStars] = useState(0);
+  const [review, setReview] = useState("");
+  const [aiMode, setAiMode] = useState("Summarize");
+  const [question, setQuestion] = useState("");
+  const [answer, setAnswer] = useState("");
+  const [asking, setAsking] = useState(false);
+  const [quoteIdx, setQuoteIdx] = useState(0);
+  const [mood, setMood] = useState("Cozy");
+  const [reacted, setReacted] = useState<Record<number, string>>({});
 
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/auth/login");
-    }
-  }, [status, router]);
+  if (status === "unauthenticated") router.push("/auth/login");
+  if (status === "loading") return null;
 
-  useEffect(() => {
-    if (status !== "authenticated") return;
+  const challengePct = 38;
 
-    const run = async () => {
-      const [meRes, libraryRes, discoveryRes, aiRes] = await Promise.all([
-        fetch("/api/me"),
-        fetch("/api/library"),
-        fetch("/api/discovery"),
-        fetch("/api/ai/recommendations?interests=business,productivity"),
-      ]);
-
-      if (meRes.ok) {
-        const me = (await meRes.json()) as { stats: DashboardStats };
-        setStats(me.stats);
-      }
-      if (libraryRes.ok) {
-        const entries = (await libraryRes.json()) as LibraryEntry[];
-        setLibrary(entries);
-      }
-      if (discoveryRes.ok) setDiscovery((await discoveryRes.json()) as DiscoverySnapshot);
-      if (aiRes.ok) setRecommendations((await aiRes.json()) as Recommendation[]);
-    };
-
-    void run();
-  }, [status]);
-
-  useEffect(() => {
-    if (!search.trim()) return;
-
-    const timer = setTimeout(async () => {
-      const res = await fetch(`/api/books?query=${encodeURIComponent(search.trim())}`);
-      if (res.ok) {
-        setSearchResults((await res.json()) as SearchBook[]);
-      }
-    }, 250);
-
-    return () => clearTimeout(timer);
-  }, [search]);
-
-  const currentlyReading = useMemo(
-    () => library.filter((entry) => entry.status === "reading").slice(0, 4),
-    [library]
-  );
-
-  const addExistingBook = async (bookId: string, statusValue: "unread" | "reading" | "finished" = "unread") => {
-    setBusyLabel(bookId);
-    const res = await fetch("/api/library", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ bookId, status: statusValue }),
-    });
-
-    if (res.ok) {
-      const [libraryRes, meRes] = await Promise.all([fetch("/api/library"), fetch("/api/me")]);
-      if (libraryRes.ok) setLibrary((await libraryRes.json()) as LibraryEntry[]);
-      if (meRes.ok) { const me = (await meRes.json()) as { stats: DashboardStats }; setStats(me.stats); }
-    }
-    setBusyLabel(null);
-  };
-
-  const addSuggested = async (book: {
-    title: string;
-    author: string;
-    description: string;
-    coverUrl: string;
-  }) => {
-    setBusyLabel(book.title);
-    const createRes = await fetch("/api/books", {
+  const askAi = async () => {
+    if (!question.trim()) return;
+    setAsking(true);
+    const res = await fetch("/api/ai", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        title: book.title,
-        author: book.author,
-        description: book.description,
-        coverImage: book.coverUrl,
+        question: `[Mode: ${aiMode}] ${question}`,
+        bookTitle: "Project Hail Mary",
+        currentPage: pages,
       }),
     });
-
-    if (!createRes.ok) {
-      setBusyLabel(null);
-      return;
-    }
-
-    const created = (await createRes.json()) as { id: string };
-    await addExistingBook(created.id, "unread");
-    setBusyLabel(null);
+    const payload = (await res.json().catch(() => ({}))) as { answer?: string; error?: string };
+    setAnswer(payload.answer || payload.error || "No response");
+    setAsking(false);
   };
 
-  if (status === "loading") {
-    return null;
-  }
+  const todayQuote = useMemo(() => quotePool[quoteIdx], [quoteIdx]);
 
   return (
     <>
-      <Navigation />
-      <main className="page-shell">
-        <div className="mx-auto w-full max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
-          <section className="grid gap-4 md:grid-cols-3">
-            <div className="glass-card">
-              <p className="text-sm text-zinc-500">Total books read</p>
-              <p className="display-title mt-2 text-3xl">{stats.booksRead}</p>
-            </div>
-            <div className="glass-card">
-              <p className="text-sm text-zinc-500">Pages read</p>
-              <p className="display-title mt-2 text-3xl">{stats.totalPages}</p>
-            </div>
-            <div className="glass-card">
-              <p className="text-sm text-zinc-500">Reading streak</p>
-              <p className="display-title mt-2 text-3xl">{stats.readingStreak} days</p>
-            </div>
-          </section>
-
-          <section className="glass-card">
-            <div className="mb-4 flex items-center justify-between gap-2">
+      <AppHeader />
+      <main className="page-fade min-h-screen bg-[var(--bg)] pb-10">
+        <div className="mx-auto w-full max-w-7xl space-y-6 px-4 pt-6 sm:px-6 lg:px-8">
+          <section className="premium-card overflow-hidden bg-[var(--ink)] text-white">
+            <div className="grid gap-4 p-5 sm:p-6 md:grid-cols-[1fr_auto]">
               <div>
-                <p className="display-title text-2xl">Your current sprint</p>
-                <p className="text-sm text-zinc-500">Pick one book and move it forward today.</p>
+                <p className="font-display text-2xl">2026 Reading Challenge</p>
+                <p className="mt-1 text-sm text-white/70">You are 38% toward your yearly goal. Keep pushing.</p>
+                <div className="mt-4 h-2 w-full rounded-full bg-white/15">
+                  <div className="h-full rounded-full bg-[var(--teal2)]" style={{ width: `${challengePct}%` }} />
+                </div>
+                <p className="mt-2 text-xs text-white/70">1,824 / 4,800 pages</p>
               </div>
-              <Link href="/bookshelf" className="primary-btn">
-                Open Bookshelf
-              </Link>
+              <div className="text-right">
+                <p className="font-display text-6xl leading-none text-[var(--gold2)]">20</p>
+                <p className="text-xs uppercase tracking-[0.12em] text-white/65">Books Read</p>
+              </div>
             </div>
-
-            {currentlyReading.length === 0 ? (
-              <p className="text-sm text-zinc-500">No active book yet. Add one from a recommendation below.</p>
-            ) : (
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                {currentlyReading.map((entry) => {
-                  const progress = entry.totalPages
-                    ? Math.min(100, Math.round(((entry.pagesRead || 0) / entry.totalPages) * 100))
-                    : 0;
-
-                  return (
-                    <Link
-                      key={entry.id}
-                      href={`/books/${entry.book.id}`}
-                      className="rounded-xl border border-zinc-200 bg-white p-4 transition hover:-translate-y-0.5 dark:border-zinc-800 dark:bg-zinc-900"
-                    >
-                      <p className="font-semibold">{entry.book.title}</p>
-                      <p className="text-xs text-zinc-500">{entry.book.author || "Unknown"}</p>
-                      <div className="mt-3 h-2 rounded-full bg-zinc-200 dark:bg-zinc-700">
-                        <div className="h-full rounded-full bg-cyan-500" style={{ width: `${progress}%` }} />
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            )}
           </section>
 
-          <section className="glass-card space-y-4">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-cyan-500" />
-              <p className="display-title text-xl">Quick Discover</p>
-            </div>
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search books by title or author"
-              className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm outline-none ring-cyan-400 placeholder:text-zinc-400 focus:ring-2 dark:border-zinc-700 dark:bg-zinc-900"
-            />
-            {search.trim().length > 0 && searchResults.length > 0 && (
-              <div className="grid gap-2 sm:grid-cols-2">
-                {searchResults.slice(0, 6).map((book) => (
-                  <div
-                    key={book.id}
-                    className="flex items-center justify-between rounded-xl border border-zinc-200 bg-white p-3 text-sm dark:border-zinc-800 dark:bg-zinc-900"
-                  >
-                    <div>
-                      <p className="font-semibold">{book.title}</p>
-                      <p className="text-zinc-500">{book.author || "Unknown"}</p>
+          <div className="grid gap-6 xl:grid-cols-[3fr_2fr]">
+            <section className="space-y-6">
+              <article className="premium-card p-5 sm:p-6">
+                <p className="font-display text-2xl text-[var(--ink)]">Continue Reading</p>
+                <div className="mt-4 grid gap-4 sm:grid-cols-[98px_1fr]">
+                  <div className="flex h-28 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--pur)] to-[var(--teal2)] text-4xl">🚀</div>
+                  <div>
+                    <p className="font-display text-xl text-[var(--ink)]">Project Hail Mary</p>
+                    <p className="text-sm text-[var(--ink3)]">Andy Weir</p>
+                    <span className="mt-2 inline-flex rounded-full bg-[var(--teal3)] px-2 py-1 text-xs font-medium text-[var(--teal)]">Sci-Fi</span>
+                    <div className="mt-3 h-2 rounded-full bg-[var(--bg3)]">
+                      <div className="h-full rounded-full bg-[var(--gold2)]" style={{ width: "61%" }} />
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => void addExistingBook(book.id)}
-                      className="secondary-btn"
-                      disabled={busyLabel === book.id}
-                    >
-                      <Plus className="h-4 w-4" />
-                      Add
-                    </button>
+                    <p className="mt-1 text-xs text-[var(--ink3)]">61% • page {pages} of 300</p>
                   </div>
-                ))}
-              </div>
-            )}
-          </section>
-
-          {discoveryCategories.map((category) => (
-            <section key={category.key} className="glass-card">
-              <div className="mb-3 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  {category.key === "trending" ? (
-                    <Flame className="h-5 w-5 text-orange-500" />
-                  ) : category.key === "recommended" ? (
-                    <BookOpen className="h-5 w-5 text-cyan-500" />
-                  ) : (
-                    <Target className="h-5 w-5 text-emerald-500" />
-                  )}
-                  <p className="display-title text-xl">{category.title}</p>
                 </div>
-              </div>
 
-              <div className="scroll-row">
-                {category.books.map((book) => (
-                  <article
-                    key={`${category.key}-${book.title}`}
-                    className="min-w-[220px] rounded-xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900"
-                  >
-                    <div
-                      className="mb-3 h-32 rounded-lg bg-cover bg-center"
-                      style={{ backgroundImage: `url(${book.coverUrl})` }}
-                    />
-                    <p className="font-semibold">{book.title}</p>
-                    <p className="text-xs text-zinc-500">{book.author}</p>
-                    <p className="mt-2 line-clamp-2 text-xs text-zinc-600 dark:text-zinc-300">{book.description}</p>
-                    <button
-                      type="button"
-                      onClick={() => void addSuggested(book)}
-                      className="primary-btn mt-3 w-full"
-                      disabled={busyLabel === book.title}
-                    >
-                      {busyLabel === book.title ? "Adding..." : "Add to shelf"}
+                <div className="mt-4 flex flex-wrap gap-2 text-xs">
+                  <button className="rounded-full bg-[var(--gold3)] px-3 py-1 text-[var(--gold)]" onClick={() => { setLogOpen((v) => !v); setSaved(""); }}>📖 Log pages</button>
+                  <button className="rounded-full bg-[var(--teal3)] px-3 py-1 text-[var(--teal)]" onClick={() => { setNoteOpen((v) => !v); setSaved(""); }}>📝 Note</button>
+                  <button className="rounded-full bg-[var(--rose3)] px-3 py-1 text-[var(--rose)]" onClick={() => { setRatingOpen((v) => !v); setSaved(""); }}>⭐ Rate</button>
+                  <button className="rounded-full bg-[var(--pur3)] px-3 py-1 text-[var(--pur)]">💬 Club</button>
+                </div>
+
+                {logOpen && (
+                  <div className="mt-4 rounded-xl border border-[var(--bg3)] p-4">
+                    <label className="text-sm font-medium text-[var(--ink2)]">Log pages</label>
+                    <div className="mt-2 grid gap-3 sm:grid-cols-[1fr_120px]">
+                      <input type="range" min={0} max={300} value={pages} onChange={(e) => setPages(Number(e.target.value))} />
+                      <input value={pages} onChange={(e) => setPages(Number(e.target.value) || 0)} className="rounded-lg border border-[var(--bg3)] px-3 py-2 text-sm" />
+                    </div>
+                    <div className="mt-3 flex gap-2">
+                      <button className="premium-btn-primary" onClick={() => setSaved("Pages updated successfully")}>Save</button>
+                      <button className="premium-btn-outline" onClick={() => setLogOpen(false)}>Cancel</button>
+                    </div>
+                  </div>
+                )}
+
+                {noteOpen && (
+                  <div className="mt-4 rounded-xl border border-[var(--bg3)] p-4">
+                    <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={4} placeholder="Write a quick thought..." className="w-full rounded-lg border border-[var(--bg3)] px-3 py-2 text-sm" />
+                    <div className="mt-3 flex gap-2">
+                      <button className="premium-btn-primary" onClick={() => setSaved("Note saved")}>Save</button>
+                      <button className="premium-btn-outline" onClick={() => setNoteOpen(false)}>Cancel</button>
+                    </div>
+                  </div>
+                )}
+
+                {ratingOpen && (
+                  <div className="mt-4 rounded-xl border border-[var(--bg3)] p-4">
+                    <div className="flex gap-1">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <button key={i} onClick={() => setStars(i + 1)}>
+                          <Star className={`h-5 w-5 ${i < stars ? "fill-[var(--gold2)] text-[var(--gold2)]" : "text-[var(--bg3)]"}`} />
+                        </button>
+                      ))}
+                    </div>
+                    <textarea value={review} onChange={(e) => setReview(e.target.value)} rows={3} placeholder="Optional review" className="mt-2 w-full rounded-lg border border-[var(--bg3)] px-3 py-2 text-sm" />
+                    <div className="mt-3 flex gap-2">
+                      <button className="premium-btn-primary" onClick={() => setSaved("Review posted")}>Post review</button>
+                      <button className="premium-btn-outline" onClick={() => setRatingOpen(false)}>Cancel</button>
+                    </div>
+                  </div>
+                )}
+
+                {saved && <p className="mt-3 text-sm text-[var(--grn)]">{saved}</p>}
+              </article>
+
+              <article className="premium-card bg-[var(--ink)] p-5 text-white sm:p-6">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--gold2)]">Powered by Claude</p>
+                <p className="font-display mt-2 text-2xl">AI Reading Assistant</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {["Summarize", "Explain", "Next book", "Quiz me", "Themes"].map((mode) => (
+                    <button key={mode} onClick={() => setAiMode(mode)} className={`rounded-full px-3 py-1 text-xs transition-all duration-[0.18s] ${aiMode === mode ? "bg-[var(--gold2)] text-white" : "bg-white/10 text-white/80"}`}>
+                      {mode}
                     </button>
-                  </article>
-                ))}
-              </div>
+                  ))}
+                </div>
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                  <input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Ask about your current book..." className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-white/55" />
+                  <button className="premium-btn-primary" onClick={() => void askAi()} disabled={asking}>{asking ? "Asking..." : "Ask"}</button>
+                </div>
+                {answer && <div className="mt-3 rounded-xl border border-white/15 bg-white/8 p-3 text-sm text-white/90">{answer}</div>}
+              </article>
             </section>
-          ))}
 
-          <section className="grid gap-4 lg:grid-cols-2">
-            <article className="glass-card">
-              <div className="mb-3 flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-cyan-500" />
-                <p className="display-title text-xl">AI Recommendations</p>
-              </div>
-              <div className="space-y-2 text-sm">
-                {recommendations.map((item) => (
-                  <div key={item.title} className="rounded-xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
-                    <p className="font-semibold">{item.title}</p>
-                    <p className="text-zinc-500">{item.reason}</p>
-                  </div>
-                ))}
-                {recommendations.length === 0 && <p className="text-zinc-500">No recommendations yet.</p>}
-              </div>
-            </article>
-
-            <article className="glass-card space-y-3">
-              <div>
-                <div className="mb-2 flex items-center gap-2">
-                  <Users className="h-5 w-5 text-emerald-500" />
-                  <p className="display-title text-xl">Trending Readers</p>
+            <aside className="space-y-6">
+              <article className="premium-card p-5 sm:p-6">
+                <p className="font-display text-xl">Goals & Streak</p>
+                <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                  <div className="rounded-xl bg-[var(--gold3)] p-3"><p className="text-xs text-[var(--ink3)]">Streak</p><p className="font-display text-2xl text-[var(--gold)]">12d</p></div>
+                  <div className="rounded-xl bg-[var(--teal3)] p-3"><p className="text-xs text-[var(--ink3)]">Monthly goal</p><p className="font-display text-2xl text-[var(--teal)]">78%</p></div>
+                  <div className="rounded-xl bg-[var(--rose3)] p-3"><p className="text-xs text-[var(--ink3)]">Year count</p><p className="font-display text-2xl text-[var(--rose)]">20</p></div>
+                  <div className="rounded-xl bg-[var(--grn3)] p-3"><p className="text-xs text-[var(--ink3)]">Genres</p><p className="font-display text-2xl text-[var(--grn)]">7</p></div>
                 </div>
-                <div className="space-y-2 text-sm">
-                  {discovery.trendingUsers.slice(0, 5).map((user) => (
-                    <p key={user.email} className="rounded-lg bg-zinc-100 px-3 py-2 dark:bg-zinc-800">{user.name} · score {user.score}</p>
+                <div className="mt-3 h-2 rounded-full bg-[var(--bg3)]"><div className="h-full w-2/3 rounded-full bg-[var(--teal2)]" /></div>
+                <p className="mt-3 text-xs text-[var(--ink3)]">Today&apos;s mood</p>
+                <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                  {["Cozy", "Deep", "Quick", "Late night"].map((m) => (
+                    <button key={m} onClick={() => setMood(m)} className={`rounded-full px-3 py-1 ${mood === m ? "bg-[var(--gold3)] text-[var(--gold)] border border-[var(--gold2)]" : "border border-[var(--bg3)] text-[var(--ink2)]"}`}>{m}</button>
                   ))}
                 </div>
-              </div>
-              <div>
-                <div className="mb-2 flex items-center gap-2">
-                  <MessageSquare className="h-5 w-5 text-orange-500" />
-                  <p className="display-title text-xl">Hot Discussions</p>
-                </div>
-                <div className="space-y-2 text-sm">
-                  {discovery.trendingDiscussions.slice(0, 5).map((thread) => (
-                    <p key={thread.id} className="rounded-lg bg-zinc-100 px-3 py-2 dark:bg-zinc-800">#{thread.topic} · {thread.title}</p>
+              </article>
+
+              <article className="premium-card bg-[var(--ink)] p-5 text-white sm:p-6">
+                <p className="text-3xl text-[var(--gold)]">"</p>
+                <p className="font-display text-xl italic">{todayQuote}</p>
+                <p className="mt-2 text-sm text-white/65">- Quote of the Day</p>
+                <button className="mt-3 premium-btn-outline border-white/20 text-white" onClick={() => setQuoteIdx((v) => (v + 1) % quotePool.length)}>New quote ↻</button>
+              </article>
+
+              <article className="premium-card p-5 sm:p-6">
+                <p className="font-display text-xl">Friends Activity</p>
+                <div className="mt-3 space-y-2">
+                  {friendActivitySeed.map((item) => (
+                    <div key={item.id} className="rounded-xl border border-[var(--bg3)] p-3">
+                      <div className="flex items-center gap-2">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--teal3)] text-xs font-semibold text-[var(--teal)]">{item.name.split(" ").map((v) => v[0]).join("")}</div>
+                        <p className="text-sm text-[var(--ink2)]"><span className="font-medium">{item.name}</span> {item.action}</p>
+                      </div>
+                      <div className="mt-2 flex items-center justify-between">
+                        <p className="text-xs text-[var(--ink3)]">{item.time} ago</p>
+                        <div className="flex gap-1 text-xs">
+                          {["❤️", "👏", "🔥"].map((emoji) => (
+                            <button key={emoji} onClick={() => setReacted((prev) => ({ ...prev, [item.id]: emoji }))} className={`rounded-full border px-2 py-0.5 ${reacted[item.id] === emoji ? "border-[var(--gold2)] bg-[var(--gold3)]" : "border-[var(--bg3)]"}`}>{emoji}</button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
                   ))}
                 </div>
-              </div>
-            </article>
-          </section>
+              </article>
+            </aside>
+          </div>
         </div>
       </main>
     </>

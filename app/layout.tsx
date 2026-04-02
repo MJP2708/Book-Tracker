@@ -3,18 +3,18 @@ import { DM_Sans, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/lib/providers";
 import { getSiteUrl } from "@/lib/site-url";
-import { AppHeader } from "@/components/layout/AppHeader";
 
 const displayFont = Playfair_Display({
   subsets: ["latin"],
   variable: "--font-display",
-  weight: ["600", "700", "800"],
+  weight: ["400", "600", "700"],
+  style: ["normal", "italic"],
 });
 
 const bodyFont = DM_Sans({
   subsets: ["latin"],
   variable: "--font-body",
-  weight: ["400", "500", "600", "700"],
+  weight: ["300", "400", "500", "600"],
 });
 
 const siteUrl = getSiteUrl();
@@ -54,14 +54,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${displayFont.variable} ${bodyFont.variable} bg-[#f8f3e8] text-[#2f241c] antialiased transition-colors duration-200 dark:bg-[#110d0a] dark:text-[#efe6d5]`}
-      >
-        <Providers>
-          <AppHeader />
-          {children}
-        </Providers>
+    <html lang="en">
+      <body className={`${displayFont.variable} ${bodyFont.variable} antialiased`}>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
