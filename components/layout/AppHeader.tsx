@@ -10,7 +10,9 @@ const navLinks = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/shelf", label: "My Shelf" },
   { href: "/discover", label: "Discover" },
+  { href: "/live", label: "Live" },
   { href: "/clubs", label: "Clubs", hasNotification: true },
+  { href: "/marketplace", label: "Market" },
   { href: "/stats", label: "Stats" },
   { href: "/profile", label: "Profile" },
 ];
