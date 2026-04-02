@@ -77,7 +77,7 @@ export default function MarketplacePage() {
             <article className="premium-card overflow-hidden bg-[var(--ink)] p-5 text-white sm:p-6">
               <p className="text-xs uppercase tracking-[0.12em] text-[var(--gold2)]">Marketplace</p>
               <p className="font-display mt-2 text-3xl">Buy Books & Audiobooks</p>
-              <p className="mt-2 text-sm text-white/70">Shop physical and digital formats directly from your reading workflow.</p>
+              <p className="mt-2 text-sm text-white/70">A newly launched catalog with hand-picked books and audiobooks.</p>
             </article>
 
             <article className="premium-card p-4">
@@ -97,7 +97,6 @@ export default function MarketplacePage() {
                   <p className="text-sm text-[var(--ink3)]">{item.creator}</p>
                   <p className="mt-2 text-xs text-[var(--ink3)]">{item.type} • {item.format}</p>
                   <p className="mt-2 text-sm text-[var(--ink2)]">{item.summary}</p>
-                  <p className="mt-2 text-sm text-[var(--gold)]">★ {item.rating.toFixed(1)}</p>
                   <p className="font-display mt-1 text-xl">${(item.priceCents / 100).toFixed(2)}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button className="premium-btn-outline" onClick={() => setCart((prev) => prev.find((entry) => entry.id === item.id) ? prev : [...prev, item])}>Add to cart</button>
@@ -127,7 +126,7 @@ export default function MarketplacePage() {
 
             <article className="premium-card p-4">
               <p className="text-xs uppercase tracking-[0.12em] text-[var(--ink3)]">Demo Checkout</p>
-              <p className="mt-2 text-sm text-[var(--ink2)]">Payments and fulfillment run in demo mode. No real charges are made.</p>
+              <p className="mt-2 text-sm text-[var(--ink2)]">Payments and fulfillment run in demo mode while the store is in launch phase.</p>
             </article>
 
             {message && <p className="text-sm text-[var(--grn)]">{message}</p>}

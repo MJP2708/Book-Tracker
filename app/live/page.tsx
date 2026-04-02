@@ -58,7 +58,7 @@ export default function LivePage() {
     if (res.ok) {
       setForm({ title: "", bookTitle: "", format: "read-aloud", description: "" });
       setCreating(false);
-      setMessage("Session created. Share your room and go live.");
+      setMessage("Session created for beta launch.");
       void loadSessions();
     }
   };
@@ -73,7 +73,7 @@ export default function LivePage() {
     const payload = (await res.json()) as { listeners?: number; error?: string };
     if (res.ok) {
       setSessions((prev) => prev.map((s) => s.id === sessionId ? { ...s, listeners: payload.listeners || s.listeners } : s));
-      setMessage("Joined stream. Listening mode enabled.");
+      setMessage("You joined the stream.");
     } else {
       setMessage(payload.error || "Could not join stream");
     }
@@ -94,7 +94,7 @@ export default function LivePage() {
           <section className="premium-card overflow-hidden bg-[var(--ink)] p-5 text-white sm:p-6">
             <p className="text-xs uppercase tracking-[0.12em] text-[var(--gold2)]">Live Reading</p>
             <p className="font-display mt-2 text-3xl">Listen To Books In Real Time</p>
-            <p className="mt-2 text-sm text-white/70">Hosts can read live, and listeners can tune in so they can follow without reading on their own.</p>
+            <p className="mt-2 text-sm text-white/70">Early beta stream rooms are open. Host a session or drop in and listen.</p>
           </section>
 
           <section className="grid gap-4 sm:grid-cols-3">
@@ -105,7 +105,7 @@ export default function LivePage() {
 
           <section className="premium-card p-5 sm:p-6">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="font-display text-2xl">Reader Studio</p>
+              <p className="font-display text-2xl">Host Studio (Beta)</p>
               <button className="premium-btn-primary" onClick={() => setCreating((v) => !v)}>{creating ? "Close" : "Start stream"}</button>
             </div>
 
