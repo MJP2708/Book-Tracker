@@ -1,6 +1,5 @@
 export const runtime = "nodejs";
 
-import { auth } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
 
 type LiveSession = {
@@ -66,12 +65,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   const payload = (await request.json()) as {
+    hostName?: string;
     title?: string;
     bookTitle?: string;
     format?: "read-aloud" | "audiobook-style" | "discussion";
@@ -81,6 +76,7 @@ export async function POST(request: NextRequest) {
 
   const title = String(payload.title || "").trim();
   const bookTitle = String(payload.bookTitle || "").trim();
+  const hostName = String(payload.hostName || "").trim() || "Anonymous Reader";
 
   if (!title || !bookTitle) {
     return NextResponse.json({ error: "title and bookTitle are required" }, { status: 400 });
@@ -88,8 +84,8 @@ export async function POST(request: NextRequest) {
 
   const created: LiveSession = {
     id: `live_${Date.now()}`,
-    hostName: session.user.name || "Reader",
-    hostEmail: session.user.email,
+    hostName,
+    hostEmail: "",
     title,
     bookTitle,
     format: payload.format || "read-aloud",

@@ -1,11 +1,10 @@
 export const runtime = "nodejs";
 
-import { auth } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
 
 type DemoOrder = {
   id: string;
-  userEmail: string;
+  buyerName: string;
   itemId: string;
   quantity: number;
   totalCents: number;
@@ -16,26 +15,16 @@ type DemoOrder = {
 const orderLedger: DemoOrder[] = [];
 
 export async function GET() {
-  const session = await auth();
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const orders = orderLedger.filter((row) => row.userEmail === session.user.email);
-  return NextResponse.json({ orders, mode: "demo" });
+  return NextResponse.json({ orders: orderLedger.slice(0, 50), mode: "demo" });
 }
 
 export async function POST(request: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   const payload = (await request.json()) as {
     itemId?: string;
     quantity?: number;
     totalCents?: number;
     kind?: "book" | "audiobook";
+    buyerName?: string;
   };
 
   if (!payload.itemId || typeof payload.totalCents !== "number") {
@@ -44,7 +33,7 @@ export async function POST(request: NextRequest) {
 
   const order: DemoOrder = {
     id: `ord_${Date.now()}`,
-    userEmail: session.user.email,
+    buyerName: String(payload.buyerName || "").trim() || "Guest",
     itemId: payload.itemId,
     quantity: Math.max(1, payload.quantity || 1),
     totalCents: payload.totalCents,

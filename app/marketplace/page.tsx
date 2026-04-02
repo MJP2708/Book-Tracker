@@ -1,8 +1,6 @@
 "use client";
 
-import { AppHeader } from "@/components/layout/AppHeader";
-import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { PublicHeader } from "@/components/public/PublicHeader";
 import { useEffect, useMemo, useState } from "react";
 
 type Item = {
@@ -12,24 +10,17 @@ type Item = {
   type: "book" | "audiobook";
   format: string;
   priceCents: number;
-  rating: number;
   summary: string;
   coverEmoji: string;
 };
 
 export default function MarketplacePage() {
-  const { status } = useSession();
-  const router = useRouter();
-
   const [items, setItems] = useState<Item[]>([]);
   const [type, setType] = useState<"all" | "book" | "audiobook">("all");
   const [q, setQ] = useState("");
   const [cart, setCart] = useState<Item[]>([]);
   const [buyingId, setBuyingId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
-
-  if (status === "unauthenticated") router.push("/auth/login");
-  if (status === "loading") return null;
 
   const load = async (nextType: string, nextQ: string) => {
     const params = new URLSearchParams();
@@ -56,6 +47,7 @@ export default function MarketplacePage() {
         quantity: 1,
         totalCents: item.priceCents,
         kind: item.type,
+        buyerName: "Guest",
       }),
     });
     const payload = (await res.json()) as { error?: string; fulfillment?: { note?: string } };
@@ -70,14 +62,14 @@ export default function MarketplacePage() {
 
   return (
     <>
-      <AppHeader />
+      <PublicHeader />
       <main className="page-fade min-h-screen bg-[var(--bg)] pb-10">
         <div className="mx-auto grid w-full max-w-7xl gap-6 px-4 pt-6 sm:px-6 lg:grid-cols-[3fr_1.25fr] lg:px-8">
           <section className="space-y-5">
             <article className="premium-card overflow-hidden bg-[var(--ink)] p-5 text-white sm:p-6">
               <p className="text-xs uppercase tracking-[0.12em] text-[var(--gold2)]">Marketplace</p>
               <p className="font-display mt-2 text-3xl">Buy Books & Audiobooks</p>
-              <p className="mt-2 text-sm text-white/70">Shop physical and digital formats directly from your reading workflow.</p>
+              <p className="mt-2 text-sm text-white/70">Shop physical books, ebooks, and audiobooks. No account needed.</p>
             </article>
 
             <article className="premium-card p-4">
@@ -97,7 +89,6 @@ export default function MarketplacePage() {
                   <p className="text-sm text-[var(--ink3)]">{item.creator}</p>
                   <p className="mt-2 text-xs text-[var(--ink3)]">{item.type} • {item.format}</p>
                   <p className="mt-2 text-sm text-[var(--ink2)]">{item.summary}</p>
-                  <p className="mt-2 text-sm text-[var(--gold)]">★ {item.rating.toFixed(1)}</p>
                   <p className="font-display mt-1 text-xl">${(item.priceCents / 100).toFixed(2)}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button className="premium-btn-outline" onClick={() => setCart((prev) => prev.find((entry) => entry.id === item.id) ? prev : [...prev, item])}>Add to cart</button>
@@ -137,3 +128,4 @@ export default function MarketplacePage() {
     </>
   );
 }
+

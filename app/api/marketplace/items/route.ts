@@ -1,6 +1,5 @@
 export const runtime = "nodejs";
 
-import { auth } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
 
 type MarketItem = {
@@ -10,7 +9,6 @@ type MarketItem = {
   type: "book" | "audiobook";
   format: string;
   priceCents: number;
-  rating: number;
   summary: string;
   coverEmoji: string;
 };
@@ -23,7 +21,6 @@ const demoItems: MarketItem[] = [
     type: "book",
     format: "Hardcover",
     priceCents: 1899,
-    rating: 4.8,
     summary: "A science-heavy survival story with high emotional payoff.",
     coverEmoji: "🚀",
   },
@@ -34,7 +31,6 @@ const demoItems: MarketItem[] = [
     type: "audiobook",
     format: "MP3 + App",
     priceCents: 1499,
-    rating: 4.7,
     summary: "Practical framework for doing focused, valuable work.",
     coverEmoji: "🎯",
   },
@@ -45,7 +41,6 @@ const demoItems: MarketItem[] = [
     type: "book",
     format: "Paperback",
     priceCents: 1299,
-    rating: 4.5,
     summary: "A reflective novel about choice, regret, and possibility.",
     coverEmoji: "🌌",
   },
@@ -56,7 +51,6 @@ const demoItems: MarketItem[] = [
     type: "audiobook",
     format: "AAC",
     priceCents: 1699,
-    rating: 4.9,
     summary: "A system-first playbook for compounding habits.",
     coverEmoji: "⚡",
   },
@@ -77,11 +71,6 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   const payload = (await request.json()) as {
     title?: string;
     creator?: string;
@@ -105,7 +94,6 @@ export async function POST(request: NextRequest) {
     type: payload.type || "book",
     format: payload.format || "Digital",
     priceCents: payload.priceCents,
-    rating: 0,
     summary: String(payload.summary || "").trim() || "Community marketplace listing.",
     coverEmoji: payload.type === "audiobook" ? "🎧" : "📘",
   };

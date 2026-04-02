@@ -1,8 +1,6 @@
 "use client";
 
-import { AppHeader } from "@/components/layout/AppHeader";
-import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { PublicHeader } from "@/components/public/PublicHeader";
 import { useEffect, useMemo, useState } from "react";
 
 type Session = {
@@ -18,18 +16,12 @@ type Session = {
 };
 
 export default function LivePage() {
-  const { status } = useSession();
-  const router = useRouter();
-
   const [sessions, setSessions] = useState<Session[]>([]);
   const [q, setQ] = useState("");
   const [creating, setCreating] = useState(false);
   const [joiningId, setJoiningId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
-  const [form, setForm] = useState({ title: "", bookTitle: "", format: "read-aloud" as Session["format"], description: "" });
-
-  if (status === "unauthenticated") router.push("/auth/login");
-  if (status === "loading") return null;
+  const [form, setForm] = useState({ hostName: "", title: "", bookTitle: "", format: "read-aloud" as Session["format"], description: "" });
 
   const loadSessions = async (query = "") => {
     const res = await fetch(`/api/live/sessions?q=${encodeURIComponent(query)}`);
@@ -49,16 +41,16 @@ export default function LivePage() {
   }, [q]);
 
   const goLive = async () => {
-    if (!form.title.trim() || !form.bookTitle.trim()) return;
+    if (!form.title.trim() || !form.bookTitle.trim() || !form.hostName.trim()) return;
     const res = await fetch("/api/live/sessions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
     });
     if (res.ok) {
-      setForm({ title: "", bookTitle: "", format: "read-aloud", description: "" });
+      setForm({ hostName: "", title: "", bookTitle: "", format: "read-aloud", description: "" });
       setCreating(false);
-      setMessage("Session created. Share your room and go live.");
+      setMessage("Session created. Go live and start reading!");
       void loadSessions();
     }
   };
@@ -68,7 +60,7 @@ export default function LivePage() {
     const res = await fetch(`/api/live/sessions/${sessionId}/join`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ asGuest: false }),
+      body: JSON.stringify({}),
     });
     const payload = (await res.json()) as { listeners?: number; error?: string };
     if (res.ok) {
@@ -88,13 +80,13 @@ export default function LivePage() {
 
   return (
     <>
-      <AppHeader />
+      <PublicHeader />
       <main className="page-fade min-h-screen bg-[var(--bg)] pb-10">
         <div className="mx-auto w-full max-w-7xl space-y-6 px-4 pt-6 sm:px-6 lg:px-8">
           <section className="premium-card overflow-hidden bg-[var(--ink)] p-5 text-white sm:p-6">
             <p className="text-xs uppercase tracking-[0.12em] text-[var(--gold2)]">Live Reading</p>
             <p className="font-display mt-2 text-3xl">Listen To Books In Real Time</p>
-            <p className="mt-2 text-sm text-white/70">Hosts can read live, and listeners can tune in so they can follow without reading on their own.</p>
+            <p className="mt-2 text-sm text-white/70">Anyone can host a live reading session. Anyone can tune in — no account needed.</p>
           </section>
 
           <section className="grid gap-4 sm:grid-cols-3">
@@ -105,12 +97,13 @@ export default function LivePage() {
 
           <section className="premium-card p-5 sm:p-6">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="font-display text-2xl">Reader Studio</p>
+              <p className="font-display text-2xl">Host a Session</p>
               <button className="premium-btn-primary" onClick={() => setCreating((v) => !v)}>{creating ? "Close" : "Start stream"}</button>
             </div>
 
             {creating && (
               <div className="mt-4 grid gap-3">
+                <input value={form.hostName} onChange={(e) => setForm((p) => ({ ...p, hostName: e.target.value }))} placeholder="Your name (host)" className="rounded-lg border border-[var(--bg3)] px-3 py-2 text-sm" />
                 <input value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} placeholder="Session title" className="rounded-lg border border-[var(--bg3)] px-3 py-2 text-sm" />
                 <input value={form.bookTitle} onChange={(e) => setForm((p) => ({ ...p, bookTitle: e.target.value }))} placeholder="Book title" className="rounded-lg border border-[var(--bg3)] px-3 py-2 text-sm" />
                 <select value={form.format} onChange={(e) => setForm((p) => ({ ...p, format: e.target.value as Session["format"] }))} className="rounded-lg border border-[var(--bg3)] px-3 py-2 text-sm">
