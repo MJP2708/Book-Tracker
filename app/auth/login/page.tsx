@@ -10,6 +10,12 @@ export default function LoginPage() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const getFrom = () => {
+    if (typeof window === "undefined") return "/";
+    const params = new URLSearchParams(window.location.search);
+    return params.get("from") || "/";
+  };
+
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setLoading(true);
@@ -19,7 +25,7 @@ export default function LoginPage() {
       email,
       password,
       redirect: false,
-      callbackUrl: "/",
+      callbackUrl: getFrom(),
     });
 
     setLoading(false);
@@ -29,11 +35,11 @@ export default function LoginPage() {
       return;
     }
 
-    window.location.href = result.url || "/";
+    window.location.assign(getFrom());
   };
 
   const loginWithGoogle = async () => {
-    await signIn("google", { callbackUrl: "/" });
+    await signIn("google", { callbackUrl: getFrom() });
   };
 
   return (

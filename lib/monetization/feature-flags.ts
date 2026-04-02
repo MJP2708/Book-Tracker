@@ -21,7 +21,7 @@ export function isFeatureEnabled(flag: FeatureFlag) {
 }
 
 export function isPremiumEnforced() {
-  return process.env.PREMIUM_ENFORCED !== "false";
+  return process.env.PREMIUM_ENFORCED === "true";
 }
 
 export function isPremiumUserEmail(email?: string | null) {

@@ -5,14 +5,16 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { verifyDemoAuthUser } from "@/lib/demo-auth";
 
-const hasGoogle = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+const googleClientId = process.env.GOOGLE_CLIENT_ID || process.env.AUTH_GOOGLE_ID;
+const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET || process.env.AUTH_GOOGLE_SECRET;
+const hasGoogle = Boolean(googleClientId && googleClientSecret);
 
 const providers = [
   ...(hasGoogle
     ? [
         Google({
-          clientId: process.env.GOOGLE_CLIENT_ID!,
-          clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+          clientId: googleClientId!,
+          clientSecret: googleClientSecret!,
         }),
       ]
     : []),

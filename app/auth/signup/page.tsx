@@ -11,6 +11,12 @@ export default function SignupPage() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const getFrom = () => {
+    if (typeof window === "undefined") return "/";
+    const params = new URLSearchParams(window.location.search);
+    return params.get("from") || "/";
+  };
+
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setLoading(true);
@@ -33,7 +39,7 @@ export default function SignupPage() {
       email,
       password,
       redirect: false,
-      callbackUrl: "/",
+      callbackUrl: getFrom(),
     });
 
     setLoading(false);
@@ -43,11 +49,11 @@ export default function SignupPage() {
       return;
     }
 
-    window.location.href = signInResult.url || "/";
+    window.location.assign(getFrom());
   };
 
   const signupWithGoogle = async () => {
-    await signIn("google", { callbackUrl: "/" });
+    await signIn("google", { callbackUrl: getFrom() });
   };
 
   return (
