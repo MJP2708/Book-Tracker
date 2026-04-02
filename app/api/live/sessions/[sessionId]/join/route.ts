@@ -1,5 +1,6 @@
 export const runtime = "nodejs";
 
+import { auth } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
 
 type SessionRow = {
@@ -17,7 +18,8 @@ export async function POST(
   context: { params: Promise<{ sessionId: string }> }
 ) {
   const { sessionId } = await context.params;
-  const payload = (await request.json().catch(() => ({}))) as { listenerName?: string };
+  const viewer = await auth();
+  const payload = (await request.json().catch(() => ({}))) as { asGuest?: boolean };
 
   const row = fallbackSessions.find((item) => item.id === sessionId);
   if (!row) {
@@ -30,7 +32,7 @@ export async function POST(
     joined: true,
     sessionId,
     listeners: row.listeners,
-    listenerName: String(payload.listenerName || "").trim() || "Listener",
+    listenerName: payload.asGuest ? "Guest" : viewer?.user?.name || "Guest",
     mode: "demo",
   });
 }
