@@ -14,11 +14,7 @@ const quotePool = [
   "Words can change entire futures.",
 ];
 
-const friendActivitySeed = [
-  { id: 1, name: "Maya R.", action: "finished The Midnight Library", time: "2h" },
-  { id: 2, name: "Alex K.", action: "posted a review for Dune", time: "4h" },
-  { id: 3, name: "Jenna L.", action: "joined Philosophy Circle", time: "7h" },
-];
+const friendActivitySeed: Array<{ id: number; name: string; action: string; time: string }> = [];
 
 export default function DashboardPage() {
   const { status } = useSession();
@@ -27,7 +23,7 @@ export default function DashboardPage() {
   const [logOpen, setLogOpen] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
   const [ratingOpen, setRatingOpen] = useState(false);
-  const [pages, setPages] = useState(182);
+  const [pages, setPages] = useState(0);
   const [note, setNote] = useState("");
   const [saved, setSaved] = useState("");
   const [stars, setStars] = useState(0);
@@ -43,7 +39,7 @@ export default function DashboardPage() {
   if (status === "unauthenticated") router.push("/auth/login");
   if (status === "loading") return null;
 
-  const challengePct = 38;
+  const challengePct = 0;
 
   const askAi = async () => {
     if (!question.trim()) return;
@@ -73,14 +69,14 @@ export default function DashboardPage() {
             <div className="grid gap-4 p-5 sm:p-6 md:grid-cols-[1fr_auto]">
               <div>
                 <p className="font-display text-2xl">2026 Reading Challenge</p>
-                <p className="mt-1 text-sm text-white/70">You are 38% toward your yearly goal. Keep pushing.</p>
+                <p className="mt-1 text-sm text-white/70">No reading activity yet. Start your first session.</p>
                 <div className="mt-4 h-2 w-full rounded-full bg-white/15">
                   <div className="h-full rounded-full bg-[var(--teal2)]" style={{ width: `${challengePct}%` }} />
                 </div>
-                <p className="mt-2 text-xs text-white/70">1,824 / 4,800 pages</p>
+                <p className="mt-2 text-xs text-white/70">0 / 4,800 pages</p>
               </div>
               <div className="text-right">
-                <p className="font-display text-6xl leading-none text-[var(--gold2)]">20</p>
+                <p className="font-display text-6xl leading-none text-[var(--gold2)]">0</p>
                 <p className="text-xs uppercase tracking-[0.12em] text-white/65">Books Read</p>
               </div>
             </div>
@@ -99,7 +95,7 @@ export default function DashboardPage() {
                     <div className="mt-3 h-2 rounded-full bg-[var(--bg3)]">
                       <div className="h-full rounded-full bg-[var(--gold2)]" style={{ width: "61%" }} />
                     </div>
-                    <p className="mt-1 text-xs text-[var(--ink3)]">61% • page {pages} of 300</p>
+                    <p className="mt-1 text-xs text-[var(--ink3)]">0% • page {pages} of 300</p>
                   </div>
                 </div>
 
@@ -176,12 +172,12 @@ export default function DashboardPage() {
               <article className="premium-card p-5 sm:p-6">
                 <p className="font-display text-xl">Goals & Streak</p>
                 <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-                  <div className="rounded-xl bg-[var(--gold3)] p-3"><p className="text-xs text-[var(--ink3)]">Streak</p><p className="font-display text-2xl text-[var(--gold)]">12d</p></div>
-                  <div className="rounded-xl bg-[var(--teal3)] p-3"><p className="text-xs text-[var(--ink3)]">Monthly goal</p><p className="font-display text-2xl text-[var(--teal)]">78%</p></div>
-                  <div className="rounded-xl bg-[var(--rose3)] p-3"><p className="text-xs text-[var(--ink3)]">Year count</p><p className="font-display text-2xl text-[var(--rose)]">20</p></div>
-                  <div className="rounded-xl bg-[var(--grn3)] p-3"><p className="text-xs text-[var(--ink3)]">Genres</p><p className="font-display text-2xl text-[var(--grn)]">7</p></div>
+                  <div className="rounded-xl bg-[var(--gold3)] p-3"><p className="text-xs text-[var(--ink3)]">Streak</p><p className="font-display text-2xl text-[var(--gold)]">0d</p></div>
+                  <div className="rounded-xl bg-[var(--teal3)] p-3"><p className="text-xs text-[var(--ink3)]">Monthly goal</p><p className="font-display text-2xl text-[var(--teal)]">0%</p></div>
+                  <div className="rounded-xl bg-[var(--rose3)] p-3"><p className="text-xs text-[var(--ink3)]">Year count</p><p className="font-display text-2xl text-[var(--rose)]">0</p></div>
+                  <div className="rounded-xl bg-[var(--grn3)] p-3"><p className="text-xs text-[var(--ink3)]">Genres</p><p className="font-display text-2xl text-[var(--grn)]">0</p></div>
                 </div>
-                <div className="mt-3 h-2 rounded-full bg-[var(--bg3)]"><div className="h-full w-2/3 rounded-full bg-[var(--teal2)]" /></div>
+                <div className="mt-3 h-2 rounded-full bg-[var(--bg3)]"><div className="h-full w-0 rounded-full bg-[var(--teal2)]" /></div>
                 <p className="mt-3 text-xs text-[var(--ink3)]">Today&apos;s mood</p>
                 <div className="mt-2 flex flex-wrap gap-2 text-xs">
                   {["Cozy", "Deep", "Quick", "Late night"].map((m) => (
@@ -200,6 +196,9 @@ export default function DashboardPage() {
               <article className="premium-card p-5 sm:p-6">
                 <p className="font-display text-xl">Friends Activity</p>
                 <div className="mt-3 space-y-2">
+                  {friendActivitySeed.length === 0 && (
+                    <p className="text-sm text-[var(--ink3)]">No activity yet. This account has no history.</p>
+                  )}
                   {friendActivitySeed.map((item) => (
                     <div key={item.id} className="rounded-xl border border-[var(--bg3)] p-3">
                       <div className="flex items-center gap-2">

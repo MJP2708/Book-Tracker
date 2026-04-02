@@ -8,10 +8,7 @@ type SessionRow = {
   listeners: number;
 };
 
-const fallbackSessions: SessionRow[] = [
-  { id: "live_1", listeners: 36 },
-  { id: "live_2", listeners: 12 },
-];
+const fallbackSessions: SessionRow[] = [];
 
 export async function POST(
   request: NextRequest,
@@ -21,9 +18,10 @@ export async function POST(
   const viewer = await auth();
   const payload = (await request.json().catch(() => ({}))) as { asGuest?: boolean };
 
-  const row = fallbackSessions.find((item) => item.id === sessionId);
+  let row = fallbackSessions.find((item) => item.id === sessionId);
   if (!row) {
-    return NextResponse.json({ error: "Session not found" }, { status: 404 });
+    row = { id: sessionId, listeners: 0 };
+    fallbackSessions.unshift(row);
   }
 
   row.listeners += 1;

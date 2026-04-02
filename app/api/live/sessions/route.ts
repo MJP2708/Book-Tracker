@@ -16,32 +16,7 @@ type LiveSession = {
   description: string;
 };
 
-const demoSessions: LiveSession[] = [
-  {
-    id: "live_1",
-    hostName: "Maya R.",
-    hostEmail: "maya@example.com",
-    title: "Late Night Sci-Fi Read",
-    bookTitle: "Project Hail Mary",
-    format: "read-aloud",
-    scheduledFor: new Date(Date.now() - 1000 * 60 * 22).toISOString(),
-    isLive: true,
-    listeners: 36,
-    description: "Chapter-by-chapter live read with short reactions in between.",
-  },
-  {
-    id: "live_2",
-    hostName: "Alex K.",
-    hostEmail: "alex@example.com",
-    title: "Philosophy Morning Session",
-    bookTitle: "The Stranger",
-    format: "discussion",
-    scheduledFor: new Date(Date.now() + 1000 * 60 * 60 * 3).toISOString(),
-    isLive: false,
-    listeners: 12,
-    description: "A calm reading hour plus context and interpretation notes.",
-  },
-];
+const demoSessions: LiveSession[] = [];
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);

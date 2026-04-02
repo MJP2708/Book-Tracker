@@ -12,7 +12,6 @@ type Item = {
   type: "book" | "audiobook";
   format: string;
   priceCents: number;
-  rating: number;
   summary: string;
   coverEmoji: string;
 };
@@ -90,6 +89,12 @@ export default function MarketplacePage() {
             </article>
 
             <section className="grid gap-4 sm:grid-cols-2">
+              {items.length === 0 && (
+                <article className="premium-card p-4 sm:col-span-2">
+                  <p className="font-display text-xl">No listings yet</p>
+                  <p className="mt-1 text-sm text-[var(--ink3)]">The marketplace is ready, but there is no usage history or existing listings yet.</p>
+                </article>
+              )}
               {items.map((item) => (
                 <article key={item.id} className="premium-card p-4">
                   <div className="mb-3 flex h-24 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--teal2)] to-[var(--gold2)] text-4xl">{item.coverEmoji}</div>
