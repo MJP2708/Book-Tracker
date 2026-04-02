@@ -2,25 +2,28 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpenText, Search, Sparkles, Users } from "lucide-react";
+import { BellDot, BookOpenText, Search, Sparkles, Users } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { cn } from "@/lib/utils";
+import { signOut, useSession } from "next-auth/react";
 
 const navLinks = [
   { href: "/", label: "Home", icon: BookOpenText },
   { href: "/bookshelf", label: "Bookshelf", icon: Sparkles },
-  { href: "/clubs", label: "Book Clubs", icon: Users },
+  { href: "/clubs", label: "Book Clubs", icon: Users, hasNotification: true },
   { href: "/search", label: "Search", icon: Search },
 ];
 
 export function AppHeader() {
   const pathname = usePathname();
+  const { data: session, status } = useSession();
+  const isSignedIn = status === "authenticated" && !!session?.user;
 
   return (
-    <header className="sticky top-0 z-50 border-b border-stone-200/70 bg-stone-50/85 backdrop-blur-lg dark:border-stone-800 dark:bg-stone-950/80">
+    <header className="sticky top-0 z-50 border-b border-[#d7c5ab]/60 bg-[#f8f1e5]/85 backdrop-blur-lg dark:border-[#3a2d22] dark:bg-[#15100c]/88">
       <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-2">
-          <span className="rounded-xl bg-emerald-700 p-2 text-stone-50 dark:bg-emerald-400 dark:text-stone-900">
+          <span className="rounded-xl bg-amber-500 p-2 text-[#2f241c]">
             <BookOpenText className="h-4 w-4" />
           </span>
           <div>
@@ -37,24 +40,42 @@ export function AppHeader() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition",
+                  "relative inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition",
                   active
-                    ? "bg-stone-900 text-stone-100 dark:bg-stone-100 dark:text-stone-900"
-                    : "text-stone-600 hover:bg-stone-200/60 dark:text-stone-300 dark:hover:bg-stone-800"
+                    ? "bg-[#2f241c] text-[#f7ecdd] dark:bg-amber-400 dark:text-[#2f241c]"
+                    : "text-stone-700 hover:bg-stone-200/70 dark:text-stone-300 dark:hover:bg-stone-800"
                 )}
               >
                 <item.icon className="h-4 w-4" />
                 {item.label}
+                {item.hasNotification ? (
+                  <span className="absolute -right-1 -top-1 inline-flex items-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] text-white">
+                    <BellDot className="h-3 w-3" />
+                  </span>
+                ) : null}
               </Link>
             );
           })}
           <ThemeToggle />
-          <Link href="/auth/login" className="secondary-btn text-xs">
-            Login
-          </Link>
-          <Link href="/auth/signup" className="primary-btn text-xs">
-            Join Free
-          </Link>
+          {isSignedIn ? (
+            <>
+              <Link href="/profile/me" className="secondary-btn text-xs">
+                {session.user?.name || session.user?.email || "My Profile"}
+              </Link>
+              <button type="button" onClick={() => signOut({ callbackUrl: "/" })} className="primary-btn text-xs">
+                Logout
+              </button>
+            </>
+          ) : (
+            <>
+              <Link href="/auth/login" className="secondary-btn text-xs">
+                Login
+              </Link>
+              <Link href="/auth/signup" className="primary-btn text-xs">
+                Join Free
+              </Link>
+            </>
+          )}
         </nav>
       </div>
     </header>
