@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { prisma } from "@/lib/prisma";
+import { requireAuthenticatedUserForApi } from "@/lib/monetization/guards";
 
 const moveSchema = z.object({
   userBookId: z.string().min(1),
@@ -9,6 +10,12 @@ const moveSchema = z.object({
   progress: z.number().min(0).max(100).optional(),
 });
 
+const shelfNameMap = {
+  want_to_read: "Want to Read",
+  currently_reading: "Currently Reading",
+  finished: "Finished",
+} as const;
+
 export async function POST(request: NextRequest) {
   const parsed = moveSchema.safeParse(await request.json());
 
@@ -16,26 +23,41 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid payload" }, { status: 400 });
   }
 
-  const supabase = await getSupabaseServerClient();
-
-  if (supabase) {
-    const { data, error } = await supabase
-      .from("user_books")
-      .update({
-        shelf: parsed.data.toShelf,
-        progress: parsed.data.progress,
-        last_opened_at: new Date().toISOString(),
-      })
-      .eq("id", parsed.data.userBookId)
-      .select("*")
-      .single();
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-
-    return NextResponse.json({ updated: data });
+  const auth = await requireAuthenticatedUserForApi();
+  if (!auth.allowed) {
+    return auth.response!;
   }
 
-  return NextResponse.json({ updated: parsed.data, mode: "demo" });
+  try {
+    const userBook = await prisma.userBook.findFirst({
+      where: { id: parsed.data.userBookId, userId: auth.userId },
+    });
+
+    if (!userBook) {
+      return NextResponse.json({ error: "Book entry not found" }, { status: 404 });
+    }
+
+    const shelfName = shelfNameMap[parsed.data.toShelf];
+
+    const shelf =
+      (await prisma.shelf.findUnique({
+        where: { userId_name: { userId: auth.userId!, name: shelfName } },
+      })) ??
+      (await prisma.shelf.create({
+        data: { userId: auth.userId!, name: shelfName },
+      }));
+
+    const updated = await prisma.userBook.update({
+      where: { id: userBook.id },
+      data: {
+        shelfId: shelf.id,
+        ...(typeof parsed.data.progress === "number" ? { progress: parsed.data.progress } : {}),
+      },
+      include: { shelf: true },
+    });
+
+    return NextResponse.json({ updated });
+  } catch {
+    return NextResponse.json({ updated: parsed.data, mode: "demo" });
+  }
 }

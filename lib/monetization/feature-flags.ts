@@ -7,6 +7,13 @@ const enabledFlags = new Set(
     .filter(Boolean)
 );
 
+const premiumEmails = new Set(
+  (process.env.PREMIUM_USER_EMAILS ?? "")
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean)
+);
+
 export type FeatureFlag = "premium_route_guards" | "premium_ai" | "affiliate_links";
 
 export function isFeatureEnabled(flag: FeatureFlag) {
@@ -15,6 +22,11 @@ export function isFeatureEnabled(flag: FeatureFlag) {
 
 export function isPremiumEnforced() {
   return process.env.PREMIUM_ENFORCED !== "false";
+}
+
+export function isPremiumUserEmail(email?: string | null) {
+  if (!email) return false;
+  return premiumEmails.has(email.toLowerCase());
 }
 
 export function getUpgradeUrl() {

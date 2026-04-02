@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { prisma } from "@/lib/prisma";
 import { requireAuthenticatedUserForApi } from "@/lib/monetization/guards";
 
 const noteSchema = z.object({
@@ -17,32 +17,29 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid note payload" }, { status: 400 });
   }
 
-  const supabase = await getSupabaseServerClient();
-
-  if (supabase) {
-    const auth = await requireAuthenticatedUserForApi();
-    if (!auth.allowed) {
-      return auth.response!;
-    }
-
-    const { data, error } = await supabase
-      .from("notes")
-      .insert({
-        user_id: auth.userId,
-        book_id: parsed.data.bookId,
-        quote: parsed.data.quote,
-        note: parsed.data.note,
-        page_number: parsed.data.pageNumber,
-      })
-      .select("*")
-      .single();
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-
-    return NextResponse.json({ note: data }, { status: 201 });
+  const auth = await requireAuthenticatedUserForApi();
+  if (!auth.allowed) {
+    return auth.response!;
   }
 
-  return NextResponse.json({ note: { id: `note_${Date.now()}`, ...parsed.data }, mode: "demo" }, { status: 201 });
+  try {
+    const contentSuffix = [
+      parsed.data.quote ? `Quote: ${parsed.data.quote}` : null,
+      parsed.data.pageNumber ? `Page: ${parsed.data.pageNumber}` : null,
+    ]
+      .filter(Boolean)
+      .join(" | ");
+
+    const created = await prisma.note.create({
+      data: {
+        userId: auth.userId!,
+        bookId: parsed.data.bookId,
+        content: contentSuffix ? `${parsed.data.note}\n\n${contentSuffix}` : parsed.data.note,
+      },
+    });
+
+    return NextResponse.json({ note: created }, { status: 201 });
+  } catch {
+    return NextResponse.json({ note: { id: `note_${Date.now()}`, ...parsed.data }, mode: "demo" }, { status: 201 });
+  }
 }

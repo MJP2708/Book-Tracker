@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import Link from "next/link";
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { signIn } from "next-auth/react";
 
 export default function SignupPage() {
   const [name, setName] = useState("");
@@ -16,48 +16,38 @@ export default function SignupPage() {
     setLoading(true);
     setMessage("");
 
-    const supabase = getSupabaseBrowserClient();
-    if (!supabase) {
-      setMessage("Supabase is not configured yet.");
+    const response = await fetch("/api/auth/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, email, password }),
+    });
+
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      setMessage(payload.error || "Unable to create account.");
       setLoading(false);
       return;
     }
 
-    const { error } = await supabase.auth.signUp({
+    const signInResult = await signIn("credentials", {
       email,
       password,
-      options: {
-        data: {
-          display_name: name,
-        },
-      },
+      redirect: false,
+      callbackUrl: "/",
     });
 
     setLoading(false);
 
-    if (error) {
-      setMessage(error.message);
+    if (!signInResult || signInResult.error) {
+      setMessage("Account created. Please sign in.");
       return;
     }
 
-    setMessage("Account created. Check your email for verification.");
+    window.location.href = signInResult.url || "/";
   };
 
   const signupWithGoogle = async () => {
-    const supabase = getSupabaseBrowserClient();
-    if (!supabase) {
-      setMessage("Supabase is not configured yet.");
-      return;
-    }
-
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: `${window.location.origin}/` },
-    });
-
-    if (error) {
-      setMessage(error.message);
-    }
+    await signIn("google", { callbackUrl: "/" });
   };
 
   return (

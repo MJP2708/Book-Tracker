@@ -1,6 +1,6 @@
-import { createServerClient } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
-import { isFeatureEnabled, isPremiumEnforced } from "@/lib/monetization/feature-flags";
+import { getToken } from "next-auth/jwt";
+import { isFeatureEnabled, isPremiumEnforced, isPremiumUserEmail } from "@/lib/monetization/feature-flags";
 
 const premiumRoutePrefixes = ["/knowledge", "/api/ai", "/api/knowledge/search"];
 
@@ -15,43 +15,12 @@ export default async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    return NextResponse.next();
-  }
-
-  let response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
+  const token = await getToken({
+    req: request,
+    secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
   });
 
-  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      getAll() {
-        return request.cookies.getAll();
-      },
-      setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-        response = NextResponse.next({
-          request: {
-            headers: request.headers,
-          },
-        });
-        cookiesToSet.forEach(({ name, value, options }) => {
-          response.cookies.set(name, value, options);
-        });
-      },
-    },
-  });
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
+  if (!token?.sub) {
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -61,13 +30,7 @@ export default async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  const { data: profile } = await supabase
-    .from("users")
-    .select("premium")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (isPremiumEnforced() && !profile?.premium) {
+  if (isPremiumEnforced() && !isPremiumUserEmail(typeof token.email === "string" ? token.email : null)) {
     if (pathname.startsWith("/api/")) {
       return NextResponse.json(
         {
@@ -84,7 +47,7 @@ export default async function middleware(request: NextRequest) {
     return NextResponse.redirect(pricingUrl);
   }
 
-  return response;
+  return NextResponse.next();
 }
 
 export const config = {

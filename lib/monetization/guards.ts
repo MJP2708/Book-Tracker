@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getAuthContext } from "@/lib/supabase/auth-context";
-import { getUpgradeUrl, isFeatureEnabled, isPremiumEnforced } from "@/lib/monetization/feature-flags";
+import { auth } from "@/lib/auth";
+import { getUpgradeUrl, isFeatureEnabled, isPremiumEnforced, isPremiumUserEmail } from "@/lib/monetization/feature-flags";
 
 type PremiumApiGuardResult = {
   allowed: boolean;
@@ -9,30 +9,22 @@ type PremiumApiGuardResult = {
 };
 
 export async function requireAuthenticatedUserForApi(): Promise<PremiumApiGuardResult> {
-  const context = await getAuthContext();
+  const session = await auth();
 
-  if (!context) {
-    return { allowed: true };
-  }
-
-  if (!context.user) {
+  if (!session?.user?.id) {
     return {
       allowed: false,
       response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
     };
   }
 
-  return { allowed: true, userId: context.user.id };
+  return { allowed: true, userId: session.user.id };
 }
 
 export async function requirePremiumForApi(): Promise<PremiumApiGuardResult> {
-  const context = await getAuthContext();
+  const session = await auth();
 
-  if (!context) {
-    return { allowed: true };
-  }
-
-  if (!context.user) {
+  if (!session?.user?.id) {
     return {
       allowed: false,
       response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
@@ -41,7 +33,7 @@ export async function requirePremiumForApi(): Promise<PremiumApiGuardResult> {
 
   const premiumCheckEnabled = isFeatureEnabled("premium_ai") && isPremiumEnforced();
 
-  if (premiumCheckEnabled && !context.profile?.premium) {
+  if (premiumCheckEnabled && !isPremiumUserEmail(session.user.email)) {
     return {
       allowed: false,
       response: NextResponse.json(
@@ -55,5 +47,5 @@ export async function requirePremiumForApi(): Promise<PremiumApiGuardResult> {
     };
   }
 
-  return { allowed: true, userId: context.user.id };
+  return { allowed: true, userId: session.user.id };
 }
