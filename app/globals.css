@@ -21,6 +21,8 @@
   --grn3: #e8f5e8;
   --pur: #4a2d8a;
   --pur3: #f0ebfe;
+  --font-body: "Segoe UI";
+  --font-display: Georgia;
 }
 
 @layer base {

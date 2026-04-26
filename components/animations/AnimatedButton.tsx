@@ -1,9 +1,10 @@
 "use client";
 
 import { motion } from "framer-motion";
+import type { HTMLMotionProps } from "framer-motion";
 import { cn } from "@/lib/utils";
 
-type Props = React.ComponentProps<"button">;
+type Props = HTMLMotionProps<"button">;
 
 export function AnimatedButton({ children, className, ...props }: Props) {
   return (
