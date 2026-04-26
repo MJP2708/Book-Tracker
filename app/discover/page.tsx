@@ -4,6 +4,7 @@ import { AppHeader } from "@/components/layout/AppHeader";
 import { Search, Loader2, BookX } from "lucide-react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import type { Variants } from "framer-motion";
 import { useDebouncedValue } from "@/lib/bookshelf/use-debounced-value";
 import { LoadingSkeleton } from "@/components/animations";
 
@@ -43,12 +44,12 @@ const TABS = [
 
 // ─── Animation variants ────────────────────────────────────────────────────────
 
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: {},
   visible: { transition: { staggerChildren: 0.07 } },
 };
 
-const cardVariants = {
+const cardVariants: Variants = {
   hidden: { opacity: 0, y: 16, scale: 0.97 },
   visible: {
     opacity: 1,
