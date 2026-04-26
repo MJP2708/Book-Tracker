@@ -158,4 +158,13 @@
   .font-body {
     font-family: var(--font-body), "DM Sans", "Segoe UI", sans-serif;
   }
+
+  .carousel-track {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .carousel-track::-webkit-scrollbar {
+    display: none;
+  }
 }
