@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useRef, useState } from "react";
 import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
+import type { Variants } from "framer-motion";
 import {
   Star,
   BookmarkPlus,
@@ -47,13 +48,13 @@ const DESCRIPTION_THRESHOLD = 100;
 
 // ─── Animation variants ───────────────────────────────────────────────────────
 
-const tabContentVariants = {
+const tabContentVariants: Variants = {
   hidden: { opacity: 0, y: 10 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.28, ease: "easeOut" } },
   exit: { opacity: 0, y: -6, transition: { duration: 0.16 } },
 };
 
-const cardVariants = {
+const cardVariants: Variants = {
   hidden: { opacity: 0, y: 14 },
   visible: (i: number) => ({
     opacity: 1,
