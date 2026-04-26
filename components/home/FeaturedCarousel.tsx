@@ -17,9 +17,41 @@ const books = [
 export function FeaturedCarousel() {
   const trackRef = useRef<HTMLDivElement>(null);
   const [hoveredId, setHoveredId] = useState<number | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragState = useRef({ active: false, startX: 0, scrollLeft: 0 });
 
   const scroll = (dir: "left" | "right") => {
     trackRef.current?.scrollBy({ left: dir === "right" ? 280 : -280, behavior: "smooth" });
+  };
+
+  const startDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    const track = trackRef.current;
+    if (!track) return;
+
+    dragState.current = {
+      active: true,
+      startX: event.clientX,
+      scrollLeft: track.scrollLeft,
+    };
+    setIsDragging(true);
+    track.setPointerCapture(event.pointerId);
+  };
+
+  const drag = (event: React.PointerEvent<HTMLDivElement>) => {
+    const track = trackRef.current;
+    if (!track || !dragState.current.active) return;
+
+    const delta = event.clientX - dragState.current.startX;
+    track.scrollLeft = dragState.current.scrollLeft - delta;
+  };
+
+  const endDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    const track = trackRef.current;
+    dragState.current.active = false;
+    setIsDragging(false);
+    if (track?.hasPointerCapture(event.pointerId)) {
+      track.releasePointerCapture(event.pointerId);
+    }
   };
 
   return (
@@ -91,13 +123,22 @@ export function FeaturedCarousel() {
         <div
           ref={trackRef}
           className="carousel-track"
+          onPointerDown={startDrag}
+          onPointerMove={drag}
+          onPointerUp={endDrag}
+          onPointerCancel={endDrag}
+          onPointerLeave={(event) => {
+            if (dragState.current.active) endDrag(event);
+          }}
           style={{
             display: "flex",
             gap: "16px",
             overflowX: "auto",
             scrollSnapType: "x mandatory",
-            cursor: "grab",
+            cursor: isDragging ? "grabbing" : "grab",
             paddingBottom: "4px",
+            userSelect: "none",
+            touchAction: "pan-y",
           }}
         >
           {books.map((book, i) => (
@@ -187,7 +228,7 @@ export function FeaturedCarousel() {
                         </span>
                       </div>
                       <p style={{ margin: "4px 0 0", fontSize: "10px", color: "rgba(250,248,245,0.5)" }}>
-                        ⭐ {book.rating} · {book.pages} pages
+                        {book.rating} stars / {book.pages} pages
                       </p>
                     </motion.div>
                   )}
