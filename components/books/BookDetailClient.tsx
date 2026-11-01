@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import type { Book, Review, BookRecommendation } from "@/types/bookshelf";
 import { BookCard } from "@/components/bookshelf/BookCard";
+import { ReadingMode } from "@/components/reading/ReadingMode";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -533,6 +534,7 @@ export function BookDetailClient({ book, reviews, similar }: Props) {
           {/* Actions */}
           <div className="flex flex-wrap items-center gap-3">
             <AddToShelfButton />
+            <ReadingMode book={book} />
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.97 }}
